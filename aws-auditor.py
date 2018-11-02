@@ -1,13 +1,4 @@
-"""
-Update running totals from daily, detailed AWS billing csv's and generate a report.
-
-Talk to Cricket about:
-
-    Adding automatic downloading feature (high priority)
-        how do you want credentialls stored? File, environment variablee...
-        see toil ps for how credentials are grabbed.
-
-"""
+"""Update running totals from daily, detailed AWS billing csv's and generate a report."""
 import csv
 import os
 import json
@@ -35,7 +26,7 @@ def get_names_and_services_in_raw_data(csv_path, accounts):
                 services.add(service)
     return names, services
 
-def write_report(storage_path, report_path='aws_usage_report.txt'):
+def write_report(storage_path, report_path):
     """
     Create a file that breaks down costs by person and by service.
 
@@ -49,22 +40,34 @@ def write_report(storage_path, report_path='aws_usage_report.txt'):
         for report_type in data:
             report.write('{}\n'.format(report_type))  # By Person or By Service
             for outer_type in data[report_type]:  # Names or Services
-                report.write('\t{}:\n'.format(outer_type))
+                daily_totals = data[report_type][outer_type]['Total']
+                if len(daily_totals) == 1:
+                    report.write('\t{}: ${:.2f} first usage this month \n'.format(outer_type, daily_totals[-1]))
+                else:
+                    total_increase = daily_totals[-1] - daily_totals[-2]
+                    if total_increase == 0:
+                        report.write('\t{}: ${:.2f} no change \n'.format(outer_type, daily_totals[-1]))
+                    elif total_increase < 0.01:
+                        report.write('\t{}: ${:.2f} up < $0.01 from yesterday\n'.format(outer_type, daily_totals[-1]))
+                    else:
+                        report.write('\t{}: ${:.2f} up ${:.2f} from yesterday\n'.format(outer_type, daily_totals[-1], total_increase))
+
                 for inner_type in data[report_type][outer_type]:
                     mtd_values = data[report_type][outer_type][inner_type]
-
                     if len(mtd_values) == 1:
-                        increase = mtd_values[-1]
-                        if increase < 0.01:
-                            report.write('\t\t{}: < $0.01, this is the first date of use\n'.format(inner_type))
+                        initial_cost = mtd_values[-1]
+                        if initial_cost < 0.01:
+                            report.write('\t\t{}: < $0.01, first usage this month\n'.format(inner_type))
                         else:
-                            report.write('\t\t{}: ${:.2f}, this is the first date of use\n'.format(inner_type, increase))
+                            report.write('\t\t{}: ${:.2f}, first usage this month\n'.format(inner_type, initial_cost))
                     else:
                         increase = mtd_values[-1] - mtd_values[-2]
-                        if increase < 0.01:
+                        if increase == 0.0:
+                            report.write('\t\t{}: ${:.2f}, no change\n'.format(inner_type, mtd_values[-1]))
+                        elif increase < 0.01:
                             report.write('\t\t{}: ${:.2f}, up < $0.01 from yesterday\n'.format(inner_type, mtd_values[-1]))
                         else:
-                            report.write('\t\t{}: ${:.2f}, up ${:.2f} from yesterday\n'.format(inner_type, mtd_values[-1], mtd_values[-1] - mtd_values[-2]))
+                            report.write('\t\t{}: ${:.2f}, up ${:.2f} from yesterday\n'.format(inner_type, mtd_values[-1], increase))
                 report.write('\n')
             report.write('\n')
 
@@ -88,8 +91,8 @@ def digest_csv(path, names, services, accounts):
     :param accounts: The accounts for which data should be collected.
     :returns dailTotals: A nested dictionary
     """
-    dailyTotals = {'By Person': {name: dict() for name in names},
-                   'By Service': {service: dict() for service in services}}
+    dailyTotals = {'By Person': {name: {'Total': 0.0} for name in names},
+                   'By Service': {service: {'Total': 0.0} for service in services}}
 
     # Iterate through the csv and fetch the values for user:Owner (owner, Usually the email address of the person who created it),
     # ProductCode (EC2, S3, ...), and TotalCost (Month to Date, mtd)
@@ -104,17 +107,19 @@ def digest_csv(path, names, services, accounts):
             service = row['ProductCode']
 
             if account in accounts and mtd and service:  # Only add to daily total if it was payed for on account of interest.
-                ordered_data = [('By Person', owner, service, mtd), ('By Service', service, owner, mtd)]
+                ordered_data = [('By Person', owner, service), ('By Service', service, owner)]
                 for data in ordered_data:  # Build daily total by person and by service.
                     level = data[0]
                     if data[1] not in dailyTotals[level]:
-                        new_entry = {data[1]: {data[2]: data[3]}}
+                        new_entry = {data[1]: {data[2]: mtd, 'Total': mtd}}
                         dailyTotals[level].update(new_entry)
                     elif data[2] not in dailyTotals[level][data[1]]:
-                        new_entry = {data[2]: data[3]}
+                        new_entry = {data[2]: mtd}
                         dailyTotals[level][data[1]].update(new_entry)
+                        dailyTotals[level][data[1]]['Total'] += mtd
                     else:
                         dailyTotals[level][data[1]][data[2]] += mtd
+                        dailyTotals[level][data[1]]['Total'] += mtd
     return dailyTotals
 
 def digest_csv_to_json(csv_path, json_path, accounts):
