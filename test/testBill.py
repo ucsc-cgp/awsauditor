@@ -10,7 +10,7 @@ class BillTest(unittest.TestCase):
 
     def testPathInit(self):
         """Test that the init function works."""
-        test_data_path = 'test/data/small_aws_bill.csv'
+        test_data_path = 'data/small_aws_bill.csv'
         exported_bill_path = 'exported_bill.csv'
 
         b = Bill(test_data_path)
