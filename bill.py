@@ -1,6 +1,32 @@
 import csv
-import os
+import datetime
 
+class Entry:
+    """A class for holding data from each row in a bill."""
+    def __init__(self, row):
+        self.data = row
+
+    @property
+    def total(self):
+        """Some line items will have a their total cost under the  with the total cost while some have it under TotalCost."""
+        today = '"{}"'.format(datetime.date.today())
+        return self.data[today] if today in self.data else self.data['"TotalCost"']
+
+    @property
+    def id(self):
+        return self.data['"RecordID"']
+
+    @property
+    def account(self):
+        return self.data['"LinkedAccountName"']
+
+    @property
+    def service(self):
+        return self.data['"ProductCode"']
+
+    @property
+    def owner(self):
+        return self.data['"user:Owner"']
 
 class Bill:
     """A class for managing aws-cost-allocation bills."""
@@ -10,7 +36,7 @@ class Bill:
 
         :param sources: A path to a .csv, a Bill or a list of Bill objects to be merged.
         """
-        self.data = list()
+        self.entries = list()
         self.field_names = ''
 
         if isinstance(sources, str):
@@ -21,23 +47,31 @@ class Bill:
             for bill in sources:
                 self.merge(bill)
 
-    def filter(self, usernames, services, accounts, max, min=0.0):
+    def filter(self, owners, services, accounts, regions, max, min=0.0):
         """
         Create a new Bill object that only includes specific entries.
 
-        :param usernames: The usernames to be included in the new Bill. (As specified by the 'user:Owner' entry in the .csv)
-        :param services: The services to be included in the new Bill. (As specified by the 'ProductCode' entry in the .csv)
-        :param accounts: The accounts to be included in the new Bill. (As specified by the 'LinkedAccounts' entry in the .csv)
+        :param List owners: The owner's username to be included in the new Bill. (As specified by the 'user:Owner' entry in the .csv)
+        :param List services: The services to be included in the new Bill. (As specified by the 'ProductCode' entry in the .csv)
+        :param List accounts: The accounts to be included in the new Bill. (As specified by the 'LinkedAccounts' entry in the .csv)
+        :param List regions: The regions to be included in the new Bill. (As specified by the 'AvailabilityZone' entry in the .csv)
         :param max: The maximum cost to be included in the new Bill. (As specified by the 'TotalCost' entry in the .csv)
         :param min: The minimum cost to be included in the new Bill. (As specified by the 'TotalCost' entry in the .csv)
         :return: A new Bill object that contains entries from this instances that match given criteria.
         """
         pass
 
-    def merge(self, other_bills):
+    def merge(self, other_bill):
         """
-        Merge this bill with other bills
-        :param other_bills: A list of other Bill objects.
+        Merge this bill with another Bill object.
+
+        The actual functionality of this function has yet to be decided. My initial thoughts are:
+            Each line item in the bill has a unique 'RecordID'. To merge a Bill A into Bill B is to take every row in A not
+            in B, identified by its RecordID, and put it into B.
+
+        Not sure if this should be a class method that creates a new Bill or modifies the bill calling it.
+
+        :param other_bill: Another Bill object.
         """
         pass
 
@@ -51,8 +85,8 @@ class Bill:
         """
         with open(path, 'w') as f:
             f.write(','.join(self.field_names) + '\n')
-            for row in self.data:
-                line = ','.join(['"{}"'.format(v) for v in row.values()])
+            for entry in self.entries:
+                line = ','.join(['"{}"'.format(v) for v in entry.data.values()])
                 f.write(line + '\n')
 
     def importCSV(self, path):
@@ -71,4 +105,25 @@ class Bill:
                 reader = csv.DictReader(f, self.field_names)
 
             for row in reader:
-                self.data.append(row)
+                self.entries.append(Entry(row))
+
+    def total(self, owners=None, services=None, accounts=None, regions=None):
+        """
+        Find the total cost spent given a subset of owners, service, and accounts.
+
+        :param owners:
+        :param services:
+        :param accounts:
+        :param regions:
+        :return:
+        """
+        filtered = self.filter(owners, services, accounts, regions)
+        return sum([entry.total for entry in filtered.entries])
+
+    @property
+    def services(self):
+        return {entry.service for entry in self.entries}
+
+    @property
+    def owners(self):
+        return {entry.owner for entry in self.entries}
