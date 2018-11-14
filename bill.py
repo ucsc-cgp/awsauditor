@@ -28,9 +28,13 @@ class Entry:
     def owner(self):
         return self.data['"user:Owner"']
 
+    @property
+    def region(self):
+        return self.data['"AvailabilityZone"']
+
 class Bill:
     """A class for managing aws-cost-allocation bills."""
-    def __init__(self, sources):
+    def __init__(self, sources=None):
         """
         Create a new bill from a given source.
 
@@ -47,7 +51,7 @@ class Bill:
             for bill in sources:
                 self.merge(bill)
 
-    def filter(self, owners, services, accounts, regions, max, min=0.0):
+    def filter(self, owners=None, services=None, accounts=None, regions=None, max=None, min=None):
         """
         Create a new Bill object that only includes specific entries.
 
@@ -59,7 +63,24 @@ class Bill:
         :param min: The minimum cost to be included in the new Bill. (As specified by the 'TotalCost' entry in the .csv)
         :return: A new Bill object that contains entries from this instances that match given criteria.
         """
-        pass
+        b = Bill()
+        b.entries = self.entries
+        b.field_names = self.field_names
+
+        if owners:
+            b.entries = [e for e in b.entries if e.owner in owners]
+        if services:
+            b.entries = [e for e in b.entries if e.service in services]
+        if accounts:
+            b.entries = [e for e in b.entries if e.account in accounts]
+        if regions:
+            b.entries = [e for e in b.entries if e.region in regions]
+        if max:
+            b.entries = [e for e in b.entries if e.total < max]
+        if min:
+            b.entries = [e for e in b.entries if e.total > min]
+
+        return b
 
     def merge(self, other_bill):
         """
