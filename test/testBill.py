@@ -10,9 +10,11 @@ class BillTest(unittest.TestCase):
 
     def testPathInit(self):
         """Test that the init function works."""
+        # Paths
         test_data_path = 'data/small_aws_bill.csv'
         exported_bill_path = 'exported_bill.csv'
 
+        # Bill creation and exporting.
         b = Bill(test_data_path)
         b.export(exported_bill_path)
 
@@ -35,20 +37,22 @@ class BillTest(unittest.TestCase):
 
     def testFilter(self):
         """Ensure that filtering works."""
+        # Things to filter by.
         accounts = ['team2', 'team1']
         owners = ['emp1@ucsc.edu', 'emp2@ucsc.edu']
 
+        # Paths
         test_data_path = 'data/small_aws_bill.csv'
-        results_path = 'data/filtered_bill.csv'
+        expected_results_path = 'data/filtered_bill.csv'
         exported_bill_path = 'exported_bill.csv'
 
-
+        # Bill creation, filtering, and exporting.
         b = Bill(test_data_path)
         f = b.filter(owners=owners, accounts=accounts)
         f.export(exported_bill_path)
 
-        # Compare the exported csv with the original one.
-        with open(results_path, 'r') as k:
+        # Compare the exported csv with the expected results.
+        with open(expected_results_path, 'r') as k:
             k.readline()  # For the sake of comparison, we will not use the message AWS puts in their bill.
             with open(exported_bill_path, 'r') as r:
                 for key, result in zip(k, r):
