@@ -8,7 +8,7 @@ class BillTest(unittest.TestCase):
         """Ensure that data from a .csv is exported correctly."""
         pass
 
-    def testPathInit(self):
+    def testPathInitAndExport(self):
         """Test that the init function works."""
         # Paths
         test_data_path = 'data/small_aws_bill.csv'
