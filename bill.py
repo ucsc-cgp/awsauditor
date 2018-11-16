@@ -58,6 +58,25 @@ class Bill:
             for bill in sources:
                 self.merge(bill)
 
+
+    # return the data as a multilayered nested dictionary sorted by the given categories
+    # categories is a list of Category objects, e.g. [services, usernames, accounts]
+    # layers of the dictionary are in the order given in the list of categories
+    def sort(self, categories):
+        if len(categories) == 0:
+            return self  # base case
+
+        else:
+            output = {name: {} for name in categories[0].items}
+            for name in output:
+                rowsToAdd = {}
+                for key, row in self.items():
+                    if row[categories[0].csvColumn] == name:
+                        rowsToAdd[key] = row
+                output[name] = sort(rowsToAdd, categories[1:])  #
+            return output
+
+
     def filter(self, owners=None, services=None, accounts=None, regions=None, max=None, min=None):
         """
         Create a new Bill object that only includes specific entries.
@@ -216,3 +235,8 @@ class HistoricalBill(Bill):
             for row in reader:
                 e = Entry(row)
                 self.entries[e.id].add(date, e.total)
+
+
+newbill = Bill("filterTest.csv")
+print(newbill)
+print(newbill.sort())
