@@ -27,7 +27,7 @@ class Entry:
 
     @property
     def owner(self):
-        return self.data['"user:Owner"']
+        return self.data['"user:Owner"'] if self.data['"user:Owner"'] and not self.data['"user:Owner"'][:2] == 'i-' else '"No Owner"'
 
     @property
     def region(self):
