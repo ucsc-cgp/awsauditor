@@ -1,6 +1,8 @@
 import csv
 from collections import OrderedDict
 import sys
+from bill import Bill
+from bill import Entry
 
 
 """
@@ -23,7 +25,7 @@ class Category:
             self.items = listAllUniqueItems(bill, name)
 
 
-# return the dictionary as a multilayered nested dictionary sorted by the given categories
+# return the Bill as a multilayered nested dictionary sorted by the given categories
 # categories is a list of Category objects, e.g. [services, usernames, accounts]
 # layers of the dictionary are in the order given in the list of categories
 def sort(dictionary, categories):
@@ -42,13 +44,12 @@ def sort(dictionary, categories):
 
 
 def listAllUniqueItems(bill, column):
-    items = []
-    with open(bill, "r") as bill_in:
-        reader = csv.DictReader(bill_in)
-        for row in reader:
-            if not row[column] in items:
-                items.append(row[column])
-    return(items)
+    unique_items = []
+
+    for key, entry in bill.entries.items():
+        if not entry.data[column] in unique_items:
+            unique_items.append(entry.data[column])
+    return unique_items
 
 
 def writeToFile(dictionary, out):
@@ -69,29 +70,30 @@ def writeToFile(dictionary, out):
                         out.write("        ==  " + name + "  ==\n")
                     for item in dictionary[service][zone][name]:
                         row = dictionary[service][zone][name][item]
-                        out.write("            {:<30}   {:<40}   {:<20}\n".format(row["UsageType"],
-                                                                                  row["user:Name"],
-                                                                                  row["UsageStartDate"]))
+                        out.write("            {:<30}   {:<40}   {:<20}\n".format(str(row["UsageType"]),
+                                                                                  str(row["user:Name"]),
+                                                                                  str(row["UsageStartDate"])))
 
 def main():
     if len(sys.argv) != 2:
         print("usage: awsprinter.py <bill.csv>")
         sys.exit(1)
 
-    bill = sys.argv[1]
+    bill = Bill(sys.argv[1]) # make a bill object from the source file
+
+    #count = 0
+    #for key, val in bill.entries.items():
+    #   count += 1
 
     # make the default search categories
     zones = Category(bill, "AvailabilityZone")
     usernames = Category(bill, "user:Owner")
     services = Category(bill, "ProductCode")
 
-    with open(bill, 'r') as input:
-        byRecordId = {}
-        reader = csv.DictReader(input)
-        for row in reader:
-            byRecordId[row["RecordID"]] = row
-        sortedBill = sort(byRecordId, [services, zones, usernames])
 
+    sortedBill = sort({key: val.data for key, val in bill.entries.items()}, [services, zones, usernames])
+
+    #print(count)
     out_file = open("out.txt", "w")
     writeToFile(sortedBill, out_file)
     out_file.close()
