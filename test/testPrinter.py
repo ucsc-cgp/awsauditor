@@ -3,6 +3,7 @@ from awsprinter import Category
 import os
 from bill import Bill
 import copy
+import pprint
 
 def main():
 
@@ -23,10 +24,12 @@ def main():
 
     out_file = open("out.txt", "w")
     bill_copy = copy.deepcopy(sortedBill)
-    #pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(bill_copy)
+    pp = pprint.PrettyPrinter(indent=4)
+   # pp.pprint(bill_copy)
+
     awsPrinter.removeEmptyKeys(bill_copy)
-    awsPrinter.writeTo(bill_copy, out_file)
+    pp.pprint(bill_copy)
+    awsPrinter.writeToFile(bill_copy, out_file)
     out_file.close()
 
 if __name__ == '__main__':

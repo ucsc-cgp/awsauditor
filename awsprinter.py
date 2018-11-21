@@ -7,14 +7,13 @@ things to fix:
 - combine synonymous usernames e.g. Lon and lblauvel
 - have consistent column sizing
 - more flexibility in output format
+- add ability to search by tags in user:Name
 """
 
 """ a category by which to search a bill """
 class Category:
     csvColumn = "" # the name of the column in the bill file, e.g. "user:Owner"
     items = [] # the names in that column to search for
-
-
 
     def __init__(self, bill, name, items=[]):
         self.csvColumn = name
@@ -54,7 +53,8 @@ class awsPrinter:
     """ in progress
     recursive printing function to work with any size/shape of dictionary """
     def writeTo(dictionary, out, indent=""):
-        print("writing ", dictionary)
+        print(dictionary)
+        print("\n")
         if type(list(dictionary.values())[0]) is not dict:
             print("here")
             out.write(indent + dictionary["UsageType"] + "\n")
@@ -74,7 +74,7 @@ class awsPrinter:
                 is_empty = False
                 break
             if val:
-                response = awsPrinter.removeEmptyKeys(val)
+                response = awsPrinter.removeEmptyKeys(dictionary[key])
                 if response == True:
                     dictionary.pop(key)
                 else:
