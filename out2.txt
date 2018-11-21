@@ -17,6 +17,9 @@
                                                                                                             
                                                                                                             
                                                                                                             
+    ====  us-west-2a  ====
+    ====  us-west-2c  ====
+    ====  us-west-2b  ====
 
 ********  AWSDataTransfer  ********
     ====  Not Labelled  ====
@@ -6741,6 +6744,9 @@
             USW2-DataTransfer-Out-Bytes      provisioner-test-3e3d522e-81f3-43d9-9fd9-b0cd0aaded7f   10/1/18 0:00        
             USW2-USE1-AWS-In-Bytes           provisioner-test-3e3d522e-81f3-43d9-9fd9-b0cd0aaded7f   10/1/18 0:00        
             USW2-USE1-AWS-Out-Bytes          provisioner-test-3e3d522e-81f3-43d9-9fd9-b0cd0aaded7f   10/1/18 0:00        
+    ====  us-west-2a  ====
+    ====  us-west-2c  ====
+    ====  us-west-2b  ====
 
 ********  AWSLambda  ********
     ====  Not Labelled  ====
@@ -6764,11 +6770,17 @@
             USW2-Lambda-GB-Second                                                       10/1/18 0:00        
             USW2-Request                                                                10/1/18 0:00        
             USW2-Request                                                                10/1/18 0:00        
+    ====  us-west-2a  ====
+    ====  us-west-2c  ====
+    ====  us-west-2b  ====
 
 ********  AmazonApiGateway  ********
     ====  Not Labelled  ====
         ==  No Name  ==
             USW2-ApiGatewayRequest                                                      10/1/18 0:00        
+    ====  us-west-2a  ====
+    ====  us-west-2c  ====
+    ====  us-west-2b  ====
 
 ********  AmazonCloudWatch  ********
     ====  Not Labelled  ====
@@ -6783,6 +6795,9 @@
         ==  gpelayo1@ucsc.edu  ==
             USW2-CW:MetricMonitorUsage       commons-staging                            10/3/18 16:55       
             USW2-CW:MetricMonitorUsage       commons-staging                            10/3/18 16:55       
+    ====  us-west-2a  ====
+    ====  us-west-2c  ====
+    ====  us-west-2b  ====
 
 ********  AmazonEC2  ********
     ====  Not Labelled  ====
@@ -9023,6 +9038,9 @@
         ==  nalao@ucsc.edu  ==
             USW2-ES:Magnetic-Storage                                                    10/1/18 0:00        
             USW2-ESInstance:t2.small                                                    10/1/18 0:00        
+    ====  us-west-2a  ====
+    ====  us-west-2c  ====
+    ====  us-west-2b  ====
 
 ********  AmazonS3  ********
     ====  Not Labelled  ====
@@ -9098,6 +9116,9 @@
             USW2-TimedStorage-ByteHrs        h3agatk test data                          10/1/18 0:00        
             USW2-Requests-Tier2              h3agatk test data                          10/1/18 0:00        
             Requests-Tier2                   h3agatk test data                          10/1/18 0:00        
+    ====  us-west-2a  ====
+    ====  us-west-2c  ====
+    ====  us-west-2b  ====
 
 ********  awskms  ********
     ====  Not Labelled  ====
@@ -9140,3 +9161,6 @@
             us-west-2-KMS-Requests                                                      10/1/18 0:00        
             us-west-2-KMS-Requests                                                      10/1/18 0:00        
             us-west-2-KMS-Keys                                                          10/1/18 0:00        
+    ====  us-west-2a  ====
+    ====  us-west-2c  ====
+    ====  us-west-2b  ====
