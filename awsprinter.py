@@ -1,5 +1,7 @@
 from collections import OrderedDict
 import copy
+import re
+from bill import Bill
 
 
 """
@@ -7,7 +9,8 @@ things to fix:
 - combine synonymous usernames e.g. Lon and lblauvel
 - have consistent column sizing
 - more flexibility in output format
-- add ability to search by tags in user:Name
+- 
+- remove empty entries at the top
 """
 
 """ a category by which to search a bill """
@@ -17,9 +20,9 @@ class Category:
 
     def __init__(self, bill, name, items=[]):
         self.csvColumn = name
-        self.items = items # you can specify a subset of items in the column to search
+        self.items = items
         if len(self.items) == 0: # or if you don't specify, all unique items are used
-            self.items = awsPrinter.listAllUniqueItems(bill, name)
+            self.items = awsPrinter.list_all_unique_items(bill, name)
 
 
 class awsPrinter:
@@ -41,8 +44,33 @@ class awsPrinter:
                 output[name] = awsPrinter.sort(rowsToAdd, categories[1:])
             return output
 
+    """return a list of all unique tags in the bill"""
+    def get_all_tags(bill):
+        unique_tags = []
+        for key, entry in bill.entries.items():
+            tags = re.split("-| ", entry.data["user:Name"])
+            for t in tags:
+                for char in t:
+                    if char.isdigit():
+                        break
+                else:
+                    if t not in unique_tags:
+                        unique_tags.append(t)
+        return unique_tags
+
+    """return a bill containing only entries that contain the given tags"""
+    def filter_by_tags(bill, tags):
+        filtered_bill = Bill()
+        for key, entry in bill.entries.items():
+            for t in tags:
+                pattern = re.compile(t)
+                if pattern.search(entry.data["user:Name"]): # the user:Name column has most of the tags
+                    filtered_bill.entries[entry.id] = entry
+                    break
+        return filtered_bill
+
     """ make a list of all unique entries in a certain column """
-    def listAllUniqueItems(bill, column):
+    def list_all_unique_items(bill, column):
         unique_items = []
 
         for key, entry in bill.entries.items():
@@ -52,9 +80,7 @@ class awsPrinter:
 
     """ in progress
     recursive printing function to work with any size/shape of dictionary """
-    def writeTo(dictionary, out, indent=""):
-        print(dictionary)
-        print("\n")
+    def write_to(dictionary, out, indent=""):
         if type(list(dictionary.values())[0]) is not dict:
             print("here")
             out.write(indent + dictionary["UsageType"] + "\n")
@@ -62,11 +88,10 @@ class awsPrinter:
 
         for key, val in dictionary.items():
             out.write(indent + "==  " + key + "  ==\n")
-            awsPrinter.writeTo(val, out, indent + "    ")
-
+            awsPrinter.write_to(val, out, indent + "    ")
 
     """remove dictionary keys that only contain empty subdictionaries"""
-    def removeEmptyKeys(dictionary):
+    def remove_empty_keys(dictionary):
         dict_copy = copy.deepcopy(dictionary)
         is_empty = True
         for key, val in dict_copy.items():
@@ -74,7 +99,7 @@ class awsPrinter:
                 is_empty = False
                 break
             if val:
-                response = awsPrinter.removeEmptyKeys(dictionary[key])
+                response = awsPrinter.remove_empty_keys(dictionary[key])
                 if response == True:
                     dictionary.pop(key)
                 else:
@@ -84,7 +109,7 @@ class awsPrinter:
         return is_empty
 
     """ format and write out the dictionary """
-    def writeToFile(dictionary, out):
+    def write_to_file(dictionary, out):
         dictionary = OrderedDict(sorted(dictionary.items()))
 
         for service in dictionary:
@@ -102,7 +127,8 @@ class awsPrinter:
                             out.write("        ==  " + name + "  ==\n")
                         for item in dictionary[service][zone][name]:
                             row = dictionary[service][zone][name][item]
-                            out.write("            {:<30}   {:<40}   {:<20}\n".format(str(row["UsageType"]),
+                            out.write("            {:<25}   {:<30}   {:<40}   {:<20}\n".format(str(row["RecordID"]),
+                                                                                      str(row["UsageType"]),
                                                                                       str(row["user:Name"]),
                                                                                       str(row["UsageStartDate"])))
 
