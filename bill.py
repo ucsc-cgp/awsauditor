@@ -2,6 +2,7 @@ import csv
 import datetime
 import os
 
+
 class Entry:
     """A class for holding data from each row in a bill."""
     def __init__(self, row):
@@ -10,11 +11,10 @@ class Entry:
         """
         self.data = row
 
-    @property
-    def total(self):
+    def total(self, date=''):
         """Some line items will have a their total cost associated with the date while some have it under TotalCost."""
-        today = str(datetime.date.today())
-        t = self.data[today] if today in self.data else self.data['TotalCost']
+        date = date or str(datetime.date.today())
+        t = self.data[date] if date in self.data else self.data['TotalCost']
         return float(t) if t else 0.0
 
     @property
@@ -98,9 +98,9 @@ class Bill:
         if regions:
             b.entries = {e.id: e for e in b.entries.values() if e.region in regions}
         if max:
-            b.entries = {e.id: e for e in b.entries.values() if e.total < max}
+            b.entries = {e.id: e for e in b.entries.values() if e.total() < max}
         if min:
-            b.entries = {e.id: e for e in b.entries.values() if e.total > min}
+            b.entries = {e.id: e for e in b.entries.values() if e.total() > min}
 
         return b
 
@@ -169,7 +169,7 @@ class Bill:
         :return: The sum of the totals given the specified subsets.
         """
         subset = self.filter(owners, services, accounts, regions)
-        return sum([entry.total for entry in subset.entries.values()])
+        return sum([entry.total() for entry in subset.entries.values()])
 
     @property
     def services(self):
@@ -191,21 +191,21 @@ class HistoricalBill(Bill):
     Explain RecordIDs.
     Historical data tracks how costs for given RecordIDs change over a month.
     """
-    def updateTotals(self, source):
+    def updateTotals(self, source, date=''):
         """
         Add the new running total to the end of each row.
         :param source: A source to grab totals from. Currently only from a .csv or
         """
-        today = str(datetime.date.today())
-        self.field_names.append(today)
+        date = date or str(datetime.date.today())
+        self.field_names.append(date)
 
         if isinstance(source, str):
             if os.path.exists(source) and os.path.splitext(source)[1] == '.csv':
-                self.update_totals_from_csv(source, today)
+                self.update_totals_from_csv(source, date)
             else:
                 print('{} does not exist.'.format(source))
         elif isinstance(source, Bill):
-            self.update_totals_from_bill(source, today)
+            self.update_totals_from_bill(source, date)
         else:
             print('Cannot update this HistoricalBill\'s totals from an object of type {}'.format(type(source)))
 
@@ -218,10 +218,10 @@ class HistoricalBill(Bill):
         """
         for e in bill.entries.values():
             if e.id in self.entries:
-                self.entries[e.id].add(date, e.total)
+                self.entries[e.id].add(date, e.total())
             else:
                 historical_entry = e
-                historical_entry.add(date, e.total)
+                historical_entry.add(date, e.total(date))
                 self.entries.update({e.id: historical_entry})
 
     def update_totals_from_csv(self, path, date):
