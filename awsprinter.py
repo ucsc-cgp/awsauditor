@@ -9,20 +9,11 @@ things to fix:
 - combine synonymous usernames e.g. Lon and lblauvel
 - have consistent column sizing
 - more flexibility in output format
-- 
+- add ability to search for multiple tags with 'and' or 'or'
 - remove empty entries at the top
 """
 
-""" a category by which to search a bill """
-class Category:
-    csvColumn = "" # the name of the column in the bill file, e.g. "user:Owner"
-    items = [] # the names in that column to search for
 
-    def __init__(self, bill, name, items=[]):
-        self.csvColumn = name
-        self.items = items
-        if len(self.items) == 0: # or if you don't specify, all unique items are used
-            self.items = awsPrinter.list_all_unique_items(bill, name)
 
 
 class awsPrinter:
@@ -30,6 +21,7 @@ class awsPrinter:
     """ return the Bill as a multilayered nested dictionary sorted by the given categories
     categories is a list of Category objects, e.g. [services, usernames, accounts]
     layers of the dictionary are in the order given in the list of categories """
+    @staticmethod
     def sort(dictionary, categories):
         if len(categories) == 0:
             return dictionary # base case
@@ -45,6 +37,7 @@ class awsPrinter:
             return output
 
     """return a list of all unique tags in the bill"""
+    @staticmethod
     def get_all_tags(bill):
         unique_tags = []
         for key, entry in bill.entries.items():
@@ -59,6 +52,7 @@ class awsPrinter:
         return unique_tags
 
     """return a bill containing only entries that contain the given tags"""
+    @staticmethod
     def filter_by_tags(bill, tags):
         filtered_bill = Bill()
         for key, entry in bill.entries.items():
@@ -67,9 +61,11 @@ class awsPrinter:
                 if pattern.search(entry.data["user:Name"]): # the user:Name column has most of the tags
                     filtered_bill.entries[entry.id] = entry
                     break
+        filtered_bill.field_names = bill.field_names
         return filtered_bill
 
     """ make a list of all unique entries in a certain column """
+    @staticmethod
     def list_all_unique_items(bill, column):
         unique_items = []
 
@@ -91,6 +87,7 @@ class awsPrinter:
             awsPrinter.write_to(val, out, indent + "    ")
 
     """remove dictionary keys that only contain empty subdictionaries"""
+    @staticmethod
     def remove_empty_keys(dictionary):
         dict_copy = copy.deepcopy(dictionary)
         is_empty = True
@@ -109,6 +106,7 @@ class awsPrinter:
         return is_empty
 
     """ format and write out the dictionary """
+    @staticmethod
     def write_to_file(dictionary, out):
         dictionary = OrderedDict(sorted(dictionary.items()))
 
@@ -131,4 +129,15 @@ class awsPrinter:
                                                                                       str(row["UsageType"]),
                                                                                       str(row["user:Name"]),
                                                                                       str(row["UsageStartDate"])))
+
+""" a category by which to search a bill """
+class Category:
+    csvColumn = "" # the name of the column in the bill file, e.g. "user:Owner"
+    items = [] # the names in that column to search for
+
+    def __init__(self, bill, name, items=[]):
+        self.csvColumn = name
+        self.items = items
+        if len(self.items) == 0: # or if you don't specify, all unique items are used
+            self.items = awsPrinter.list_all_unique_items(bill, name)
 

@@ -101,7 +101,7 @@ class Bill:
             b.entries = {e.id: e for e in b.entries.values() if e.total() < max}
         if min:
             b.entries = {e.id: e for e in b.entries.values() if e.total() > min}
-
+        print(b)
         return b
 
     def merge(self, other_bill):

@@ -1,6 +1,174 @@
 
+********  AWSDataTransfer  ********
+    ====  Not Labelled  ====
+        ==  mkrause1@ucsc.edu  ==
+            4800000001327600272-5       USW2-DataTransfer-In-Bytes       mkrause-dev                                2018/10/01 00:00:00 
+            4800000001327600272-8       USW2-DataTransfer-In-Bytes       mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600272-14      USW2-DataTransfer-In-Bytes       mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001327600313-3       USW2-EUC1-AWS-Out-Bytes          mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600259-3       USW2-USW1-AWS-In-Bytes           mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600329-4       USW2-EUC1-AWS-In-Bytes           mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600286-0       USW2-APS2-AWS-In-Bytes           mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600315-0       USW2-APS2-AWS-Out-Bytes          mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600279-0       USW2-DataTransfer-Regional-Bytes   mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001327600279-6       USW2-DataTransfer-Regional-Bytes   mkrause-dev                                2018/10/01 00:00:00 
+            4800000001327600279-11      USW2-DataTransfer-Regional-Bytes   mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600321-1       USW2-DataTransfer-Out-Bytes      mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600321-8       USW2-DataTransfer-Out-Bytes      mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001327600321-11      USW2-DataTransfer-Out-Bytes      mkrause-dev                                2018/10/01 00:00:00 
+            4800000001334627524-1       USW2-DataTransfer-Out-Bytes      mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001334627524-8       USW2-DataTransfer-Out-Bytes      mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001334627524-11      USW2-DataTransfer-Out-Bytes      mkrause-dev                                2018/10/01 00:00:00 
+            4800000001327600323-1       USW2-CloudFront-In-Bytes         mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001327600323-4       USW2-CloudFront-In-Bytes         mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600323-6       USW2-CloudFront-In-Bytes         mkrause-dev                                2018/10/01 00:00:00 
+            4800000001327600254-3       USW2-USE2-AWS-In-Bytes           mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600282-1       USW2-CloudFront-Out-Bytes        mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001327600282-5       USW2-CloudFront-Out-Bytes        mkrause-dev                                2018/10/01 00:00:00 
+            4800000001327600282-7       USW2-CloudFront-Out-Bytes        mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600271-3       USW2-USW1-AWS-Out-Bytes          mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600253-7       USW2-USE2-AWS-Out-Bytes          mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600285-0       USW2-USE1-AWS-Out-Bytes          mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001327600285-6       USW2-USE1-AWS-Out-Bytes          mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600237-4       USW2-USE1-AWS-In-Bytes           mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600237-6       USW2-USE1-AWS-In-Bytes           mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001327600268-4       USW2-APS1-AWS-Out-Bytes          mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600292-5       USW2-APS1-AWS-In-Bytes           mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001327600253-8       USW2-USE2-AWS-Out-Bytes          mkrause-dccops-dev                         2018/10/01 00:00:00 
+        ==  mbaumann@ucsc.edu  ==
+            4800000001327600249-0       USW2-APN1-AWS-In-Bytes           mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600272-7       USW2-DataTransfer-In-Bytes       mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600272-9       USW2-DataTransfer-In-Bytes       mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600259-4       USW2-USW1-AWS-In-Bytes           mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600259-7       USW2-USW1-AWS-In-Bytes           mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001334440739-3       USW2-USE1-AWS-In-Bytes           mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001334440760-1       USW2-USE1-AWS-Out-Bytes          mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001334440767-1       USW2-USW1-AWS-Out-Bytes          mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001334440741-1       USW2-CloudFront-Out-Bytes        mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001327600279-7       USW2-DataTransfer-Regional-Bytes   mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600279-12      USW2-DataTransfer-Regional-Bytes   mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600321-2       USW2-DataTransfer-Out-Bytes      mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600321-6       USW2-DataTransfer-Out-Bytes      mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001334627524-2       USW2-DataTransfer-Out-Bytes      mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001334627524-6       USW2-DataTransfer-Out-Bytes      mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600245-4       USW2-APN1-AWS-Out-Bytes          mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600323-8       USW2-CloudFront-In-Bytes         mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600254-1       USW2-USE2-AWS-In-Bytes           mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001334440744-4       USW2-CloudFront-In-Bytes         mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001334440729-5       USW2-DataTransfer-Regional-Bytes   mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001334440762-3       USW2-DataTransfer-In-Bytes       mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001327600282-8       USW2-CloudFront-Out-Bytes        mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600271-4       USW2-USW1-AWS-Out-Bytes          mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600271-7       USW2-USW1-AWS-Out-Bytes          mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600253-1       USW2-USE2-AWS-Out-Bytes          mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001332773313-2       USW2-DataTransfer-Out-Bytes      mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001336050044-2       USW2-DataTransfer-Out-Bytes      mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001327600285-7       USW2-USE1-AWS-Out-Bytes          mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600285-10      USW2-USE1-AWS-Out-Bytes          mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001334440768-0       USW2-USW1-AWS-In-Bytes           mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001327600237-5       USW2-USE1-AWS-In-Bytes           mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001327600237-11      USW2-USE1-AWS-In-Bytes           mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600259-9       USW2-USW1-AWS-In-Bytes           mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600245-5       USW2-APN1-AWS-Out-Bytes          mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001327600271-9       USW2-USW1-AWS-Out-Bytes          mbaumann-dev                               2018/10/01 00:00:00 
+        ==  jrbrenna@ucsc.edu  ==
+            4800000001327600249-2       USW2-APN1-AWS-In-Bytes           jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600272-0       USW2-DataTransfer-In-Bytes       jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600281-4       USW2-APS3-AWS-In-Bytes           jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600313-0       USW2-EUC1-AWS-Out-Bytes          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600268-2       USW2-APS1-AWS-Out-Bytes          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600329-0       USW2-EUC1-AWS-In-Bytes           jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600279-4       USW2-DataTransfer-Regional-Bytes   jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600321-14      USW2-DataTransfer-Out-Bytes      jesse-dev                                  2018/10/01 00:00:00 
+            4800000001334627524-14      USW2-DataTransfer-Out-Bytes      jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600331-5       USW2-APS3-AWS-Out-Bytes          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600245-2       USW2-APN1-AWS-Out-Bytes          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600323-0       USW2-CloudFront-In-Bytes         jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600254-6       USW2-USE2-AWS-In-Bytes           jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600293-2       USW2-CAN1-AWS-In-Bytes           jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600290-2       USW2-CAN1-AWS-Out-Bytes          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600282-0       USW2-CloudFront-Out-Bytes        jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600299-1       USW2-EU-AWS-In-Bytes             jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600292-3       USW2-APS1-AWS-In-Bytes           jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600253-3       USW2-USE2-AWS-Out-Bytes          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600232-0       USW2-EU-AWS-Out-Bytes            jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600285-1       USW2-USE1-AWS-Out-Bytes          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600237-9       USW2-USE1-AWS-In-Bytes           jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600331-6       USW2-APS3-AWS-Out-Bytes          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001327600292-4       USW2-APS1-AWS-In-Bytes           jesse-dev                                  2018/10/01 00:00:00 
+        ==  jshands@ucsc.edu  ==
+            4800000001327600272-4       USW2-DataTransfer-In-Bytes       walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600281-5       USW2-APS3-AWS-In-Bytes           walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600259-6       USW2-USW1-AWS-In-Bytes           walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600300-1       USW2-SAE1-AWS-In-Bytes           walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600279-5       USW2-DataTransfer-Regional-Bytes   walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600321-7       USW2-DataTransfer-Out-Bytes      walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001334627524-7       USW2-DataTransfer-Out-Bytes      walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600331-0       USW2-APS3-AWS-Out-Bytes          walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600323-5       USW2-CloudFront-In-Bytes         walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600254-7       USW2-USE2-AWS-In-Bytes           walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600293-0       USW2-CAN1-AWS-In-Bytes           walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600290-0       USW2-CAN1-AWS-Out-Bytes          walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600282-4       USW2-CloudFront-Out-Bytes        walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600271-5       USW2-USW1-AWS-Out-Bytes          walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600253-0       USW2-USE2-AWS-Out-Bytes          walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600248-1       USW2-SAE1-AWS-Out-Bytes          walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600285-12      USW2-USE1-AWS-Out-Bytes          walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600237-12      USW2-USE1-AWS-In-Bytes           walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600281-6       USW2-APS3-AWS-In-Bytes           walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001327600259-8       USW2-USW1-AWS-In-Bytes           walt-dev-security-group                    2018/10/01 00:00:00 
+        ==  jnkrupp@ucsc.edu  ==
+            4800000001355954978         USW2-CloudFront-Out-Bytes        jnkrupp-dev                                2018/10/01 00:00:00 
+            4800000001353894269-2       USW2-DataTransfer-Out-Bytes      jnkrupp-dev                                2018/10/01 00:00:00 
+            4800000001353894265-0       USW2-DataTransfer-In-Bytes       jnkrupp-dev                                2018/10/01 00:00:00 
+            4800000001355954977         USW2-CloudFront-In-Bytes         jnkrupp-dev                                2018/10/01 00:00:00 
+            4800000001353894267-0       USW2-DataTransfer-Regional-Bytes   jnkrupp-dev                                2018/10/01 00:00:00 
+            4800000001335418456-2       USW2-EU-AWS-Out-Bytes            jnkrupp-dev                                2018/10/01 00:00:00 
+            4800000001335418460-1       USW2-EU-AWS-In-Bytes             jnkrupp-dev                                2018/10/01 00:00:00 
+
+********  AmazonEC2  ********
+    ====  us-west-2b  ====
+        ==  mkrause1@ucsc.edu  ==
+            4800000001365629895         USW2-BoxUsage:t2.medium          mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001365629898         USW2-BoxUsage:r4.xlarge          mkrause-dev2                               2018/10/01 00:00:00 
+    ====  Not Labelled  ====
+        ==  mkrause1@ucsc.edu  ==
+            4800000001365629890-5       USW2-EBS:VolumeUsage.gp2         mkrause-dev2                               2018/10/01 00:00:00 
+            4800000001365629890-14      USW2-EBS:VolumeUsage.gp2         mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001365629890-15      USW2-EBS:VolumeUsage.gp2         mkrause-dev                                2018/10/01 00:00:00 
+            4800000001365629890-17      USW2-EBS:VolumeUsage.gp2         mkrause-dccops-dev                         2018/10/01 00:00:00 
+            4800000001365629890-18      USW2-EBS:VolumeUsage.gp2         mkrause-dev                                2018/10/01 00:00:00 
+        ==  mbaumann@ucsc.edu  ==
+            4800000001367641356-2       USW2-EBS:VolumeUsage.gp2         mbaumann-commons-proddev                   2018/10/01 00:00:00 
+            4800000001365629890-12      USW2-EBS:VolumeUsage.gp2         mbaumann-commons-dev                       2018/10/01 00:00:00 
+        ==  jrbrenna@ucsc.edu  ==
+            4800000001365629890-10      USW2-EBS:VolumeUsage.gp2         jesse-dev                                  2018/10/01 00:00:00 
+        ==  jshands@ucsc.edu  ==
+            4800000001365629890-2       USW2-EBS:VolumeUsage.gp2         Walt's development                         2018/10/01 00:00:00 
+    ====  us-west-2a  ====
+        ==  jrbrenna@ucsc.edu  ==
+            4800000001365629900         USW2-BoxUsage:m5d.large          jesse-dev                                  2018/10/01 00:00:00 
+            4800000001365629884         USW2-EBSOptimized:m5d.large      jesse-dev                                  2018/10/01 00:00:00 
+        ==  jnkrupp@ucsc.edu  ==
+            4800000001353894272-1       USW2-BoxUsage:t2.large           jnkrupp-dev                                2018/10/01 00:00:00 
+    ====  us-west-2c  ====
+        ==  mkrause1@ucsc.edu  ==
+            4800000001365629897-0       USW2-BoxUsage:t2.2xlarge         mkrause-dev                                2018/10/01 00:00:00 
+        ==  mbaumann@ucsc.edu  ==
+            4800000001367641354         USW2-BoxUsage:t3.xlarge          mbaumann-commons-proddev                   2018/10/03 16:55:50 
+            4800000001365629888         USW2-BoxUsage:t3.xlarge          mbaumann-commons-dev                       2018/10/01 00:00:00 
+            4800000001365629892         USW2-EBSOptimized:m4.xlarge      mbaumann-dev                               2018/10/01 00:00:00 
+            4800000001365629886         USW2-BoxUsage:m4.xlarge          mbaumann-dev                               2018/10/01 00:00:00 
+        ==  jshands@ucsc.edu  ==
+            4800000001365629899         USW2-EBSOptimized:c4.8xlarge     walt-dev-security-group                    2018/10/01 00:00:00 
+            4800000001365629896         USW2-BoxUsage:c4.8xlarge         walt-dev-security-group                    2018/10/01 00:00:00 
+
+********  AmazonRoute53  ********
+    ====  Not Labelled  ====
+        ==  No Name  ==
+            4800000001327600317         Health-Check-AWS                 mkrause.ucsc-cgp-dev.org                   2018/10/01 00:00:00 
+
 ********  awskms  ********
     ====  Not Labelled  ====
         ==  No Name  ==
-            4800000001332442158-2       us-east-1-KMS-Keys               redwood-storage-dev-5-brian                10/1/18 0:00        
-            4800000001379027028-2       us-east-1-KMS-Requests           redwood-storage-dev-5-brian                10/1/18 0:00        
+            4800000001332442158-2       us-east-1-KMS-Keys               redwood-storage-dev-5-brian                2018/10/01 00:00:00 
