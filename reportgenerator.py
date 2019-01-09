@@ -4,14 +4,13 @@ from collections import defaultdict
 
 class ReportGenerator:
     """
-    A tool for creating reports, individualized by email address, based off of AWS Cost Explorer API responses.
+    A tool for creating reports based off of AWS Cost Explorer API responses.
 
-    See https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html for more
-    information about the response and request syntax.
+    See the following link for more information about the response and request syntax:
+    https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
     """
-    def __init__(self, start_date, end_date, accounts=[], granularity='DAILY', metrics=['BlendedCost']):
+    def __init__(self, start_date, end_date, accounts=None, granularity='DAILY', metrics=None):
         """
-        Collect data from AWS via Cost Explorer API.
 
         :param str start_date: The first date of the inquiry. (inclusive)
         :param str end_date: The last date of the inquiry. (exclusive)
@@ -23,47 +22,37 @@ class ReportGenerator:
         self.end_date = end_date
         self.accounts = accounts
         self.granularity = granularity
-        self.metrics = metrics
+        self.metrics = metrics or ['BlendedCost']
         self.client = boto3.client('ce')
 
-    def individual_api_call(self, users):
+    def determine_filters(self, users=None):
         """
-        Retrieve daily cost information for a specific user.
+        Determine the proper filter for the AWS Cost Explorer API call.
 
-        This information is broken down by the user and service used.
+        :param list(str) users: A list of user's email addresses.
+        :return dict: The proper filter to be used in the API call.
+        """
 
+        users_filter = {'And': [{'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': self.accounts}},
+                                   {'Tags': {'Key': 'Owner', 'Values': users}}]}
+        no_users_filter = {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': self.accounts}}
+
+        return users_filter if users else no_users_filter
+
+    def api_call(self, users=None):
+        """
+        Retrieve daily cost information for a specific user broken down by the user and service used.
+
+        :param list(str) users: A list of usernames to collect data on. If unspecified the response will contain data
+                                for everyone from the accounts specified in self.accounts.
         :return dict response: The response from the AWS Cost Explorer API. See  for more information.
         """
         response = self.client.get_cost_and_usage(
-            Filter={
-                'And': [
-                    {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': self.accounts}},
-                    {'Tags': {'Key': 'Owner', 'Values': users}}]
-            },
-            Granularity=self.granularity,
-            GroupBy=[  # The order of the elements of this list matters. It is assumed that "service" will be at index 1.
-                {
-                    'Type': 'TAG',
-                    'Key': 'Owner'
-                },
-                {
-                    'Type': 'DIMENSION',
-                    'Key': 'SERVICE'
-                }
-            ],
-            Metrics=self.metrics,
-            TimePeriod={'End': self.end_date,
-                        'Start': self.start_date}
-        )
-        return response
-
-    def everyone_api_call(self):
-        response = self.client.get_cost_and_usage(
-            Filter={
-                'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': self.accounts}
-            },
+            Filter=self.determine_filters(users),
             Granularity=self.granularity,
             GroupBy=[
+                # The order of the elements of this list matters for ReportGenerator.process_api_response.
+                # Owner & service must be at indicies 0 & 1, respectively.
                 {
                     'Type': 'TAG',
                     'Key': 'Owner'
@@ -88,12 +77,27 @@ class ReportGenerator:
 
         ex:
             {
-                'EC2':
-                    {
-                        '2018-12-30': 126.45,
-                        '2018-12-31': 60.45,
-                        'Total': 186.90
+                'username1' : {
+                    'EC2':
+                        {
+                            '2018-12-30': 126.45,
+                            '2018-12-31': 60.45,
+                            'Total': 186.90
+                        }, ...,
+                    'Total': 326.95
                     },
+
+                'username2' : {
+                    'EC2':
+                        {
+                            '2018-12-30': 365.63,
+                            '2018-12-31': 100.00,
+                            'Total': 465.63
+                        }, ...,
+                    'Total': 763.23
+                },...,
+
+                'Total': 12345.33
 
             }
 
@@ -135,29 +139,22 @@ class ReportGenerator:
 
         return processed
 
-
     def send_everyone_report(self):
         """
-        Get usage data, grouped by owner, from from the AWS Cost Explorer API call.
-
-        See https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html#awscostmanagement-GetCostAndUsage-request-Metrics
-        for more detailed information about the request syntax and parameters.
+        Print a report summarizing all of the data.
 
         :return dict response: The response.
         """
-        response = self.everyone_api_call()
-
-
+        response = self.api_call()
 
     def send_individual_report(self, user):
         """
+        Print a report for a given user.
 
-
-        :param str user: Who the report is about.
+        :param str user: The email address of the user who the report is about.
         """
-        response = self.individual_api_call([user])
+        response = self.api_call([user])
         processed = self.process_api_response(response)
-
 
         print('Report for', user)
         print('\n\tExpendatures from {} to {}:'.format(self.start_date, self.end_date))
