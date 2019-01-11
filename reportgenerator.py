@@ -9,6 +9,7 @@ class ReportGenerator:
     See the following link for more information about the response and request syntax:
     https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
     """
+
     def __init__(self, start_date, end_date, accounts=None, granularity='DAILY', metrics=None):
         """
 
@@ -20,35 +21,66 @@ class ReportGenerator:
         """
         self.start_date = start_date
         self.end_date = end_date
-        self.accounts = accounts
+
+        self.nums_to_aliases = self.build_nums_to_aliases(accounts)
+        self.account_nums = self.nums_to_aliases.keys()
+
         self.granularity = granularity
         self.metrics = metrics or ['BlendedCost']
-        self.client = boto3.client('ce')
+        self.client = boto3.client('ce',
+                                   region_name='us-east-1')  # Region needs to be specified; Cost Explorer hosted here.
 
-    def determine_filters(self, users=None):
+    def build_nums_to_aliases(self, aliases=None):
         """
-        Determine the proper filter for the AWS Cost Explorer API call.
+        Create a dictionary that pairs account numbers with their aliases.
 
-        :param list(str) users: A list of user's email addresses.
+        :param aliases: A list of account aliases.
+        :return dict: A dictionary that pairs account numbers with their aliases.
+        """
+
+        client = boto3.client('organizations')
+        response = client.list_accounts()
+
+        if aliases:
+            nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts'] if account['Name'] in aliases}
+        else:
+            nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts']}
+
+        return nums_to_aliases
+
+    def determine_filters(self, users=None, account_nums=None):
+        """
+        A helper function for determining the proper filter for the AWS Cost Explorer API call.
+
+        By default this will return a filter for each user associated with all of the accounts in self.acounts.
+        A list of users and accounts can be specified to narrow your search results.
+
+        :param list(str) users: A list of users' email addresses.
+        :param list(str) account_nums: A list of the account numbers of interest.
         :return dict: The proper filter to be used in the API call.
         """
 
-        users_filter = {'And': [{'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': self.accounts}},
-                                   {'Tags': {'Key': 'Owner', 'Values': users}}]}
-        no_users_filter = {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': self.accounts}}
+        users_filter = {'And': [{'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': account_nums or self.account_nums}},
+                                {'Tags': {'Key': 'Owner', 'Values': users}}]}
+        no_users_filter = {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': account_nums or self.account_nums}}
 
         return users_filter if users else no_users_filter
 
-    def api_call(self, users=None):
+    def api_call(self, users=None, account_nums=None):
         """
         Retrieve daily cost information for a specific user broken down by the user and service used.
 
+        By default this will return information about each user associated with all of the accounts in self.acounts.
+        A list of users and accounts can be specified to narrow your search results.
+
         :param list(str) users: A list of usernames to collect data on. If unspecified the response will contain data
                                 for everyone from the accounts specified in self.accounts.
+        :param list(str) account_nums: A list of the account numbers of interest. If unspecified the response will contain
+                                    data for all of the accounts specified in self.accounts.
         :return dict response: The response from the AWS Cost Explorer API. See  for more information.
         """
         response = self.client.get_cost_and_usage(
-            Filter=self.determine_filters(users),
+            Filter=self.determine_filters(users, account_nums),
             Granularity=self.granularity,
             GroupBy=[
                 # The order of the elements of this list matters for ReportGenerator.process_api_response.
@@ -145,7 +177,7 @@ class ReportGenerator:
 
         :return dict response: The response.
         """
-        response = self.api_call()
+        pass
 
     def send_individual_report(self, user):
         """
@@ -153,15 +185,33 @@ class ReportGenerator:
 
         :param str user: The email address of the user who the report is about.
         """
-        response = self.api_call([user])
-        processed = self.process_api_response(response)
+        response_by_account = dict()
+        for acct_num in self.account_nums:
+            response = self.api_call([user], [acct_num])
+            processed = self.process_api_response(response)
+            response_by_account[acct_num] = processed
 
-        print('Report for', user)
-        print('\n\tExpendatures from {} to {}:'.format(self.start_date, self.end_date))
-        for k, v in processed[user].items():
-            if k != 'Total':
-                print('\t\t{:40} ${:.2f}'.format(k, v['Total']))
+        print('Report for {}'.format(user))
 
-        print('\t\t' + '-' * 75)
-        print('\t\t{:40} ${:.2f}'.format('Total', processed['Total']))
-        print()
+        # Determine if money was spent.
+        spent_money = sum([a['Total'] for a in response_by_account.values()])
+        if spent_money:
+            print('\n\tExpenditures from {} to {}:'.format(self.start_date, self.end_date))
+
+            # For each account on which money was spent, create a breakdown of expenditures.
+            for acct_num, data in response_by_account.items():
+                if data['Total']:
+                    print('\t\tAccount: {}'.format(self.nums_to_aliases[acct_num]))
+
+                    # Breakdown by services used.
+                    for service, total in data[user].items():
+                        if service != 'Total':
+                            t = total['Total']
+                            print('\t\t\t{:40} ${:.2f}'.format(service, t))
+
+                    print('\t\t\t' + '-' * 47)
+                    print('\t\t\t{:40} ${:.2f}\n'.format('Total', data['Total']))
+        else:
+            print('\n\tNo expenditures from {} to {}'.format(self.start_date, self.end_date))
+
+        print('\n')
