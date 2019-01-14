@@ -193,28 +193,40 @@ class ReportGenerator:
             processed = self.process_api_response(response)
             response_by_account[acct_num] = processed
 
-        # TODO turn this into a function that returns a string version of the report to be sent in an email.
-        print('Report for {}'.format(user))
+        report_string = self.create_report_body(user, response_by_account)
+        print(report_string)
+
+    def create_report_body(self, user, response_by_account):
+        """
+        Create a string version of a report detailing the expenditures of a user.
+
+        :param user: The email address of the user recieving the report.
+        :param response_by_account: a dictionary containing expenditure data organized by account.
+        :return str report: a string containing the report.
+        """
+        report = 'Report for {}\n'.format(user)
 
         # Determine if money was spent.
         spent_money = sum([a['Total'] for a in response_by_account.values()])
         if spent_money:
-            print('\n\tExpenditures from {} to {}:'.format(self.start_date, self.end_date))
+            report += '\n\tExpenditures from {} to {}:\n'.format(self.start_date, self.end_date)
 
             # For each account on which money was spent, create a breakdown of expenditures.
             for acct_num, data in response_by_account.items():
                 if data['Total']:
-                    print('\t\tAccount: {}'.format(self.nums_to_aliases[acct_num]))
+                    report += '\t\tAccount: {}\n'.format(self.nums_to_aliases[acct_num])
 
                     # Breakdown by services used.
                     for service, total in data[user].items():
                         if service != 'Total':  # The total across all services is stored alongside them and should be ignored.
                             t = total['Total']
-                            print('\t\t\t{:40} ${:.2f}'.format(service, t))
+                            report += '\t\t\t{:40} ${:.2f}\n'.format(service, t)
 
-                    print('\t\t\t' + '-' * 47)
-                    print('\t\t\t{:40} ${:.2f}\n'.format('Total', data['Total']))
+                    report+= '\t\t\t' + '-' * 47 + '\n'
+                    report += '\t\t\t{:40} ${:.2f}\n\n'.format('Total', data['Total'])
         else:
-            print('\n\tNo expenditures from {} to {}'.format(self.start_date, self.end_date))
+            report += '\n\tNo expenditures from {} to {}\n'.format(self.start_date, self.end_date)
 
-        print('\n')
+        report += '\n'
+
+        return report
