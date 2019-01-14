@@ -27,10 +27,10 @@ class ReportGenerator:
 
         self.granularity = granularity
         self.metrics = metrics or ['BlendedCost']
-        self.client = boto3.client('ce',
-                                   region_name='us-east-1')  # Region needs to be specified; Cost Explorer hosted here.
+        self.client = boto3.client('ce', region_name='us-east-1')  # Region needs to be specified; Cost Explorer hosted here.
 
-    def build_nums_to_aliases(self, aliases=None):
+    @staticmethod
+    def build_nums_to_aliases(aliases=None):
         """
         Create a dictionary that pairs account numbers with their aliases.
 
@@ -100,7 +100,8 @@ class ReportGenerator:
         )
         return response
 
-    def process_api_response(self, response):
+    @staticmethod
+    def process_api_response(response):
         """
         Turns the response from the AWS Cost Explorer API and turns it into more accessable data.
 
@@ -185,12 +186,14 @@ class ReportGenerator:
 
         :param str user: The email address of the user who the report is about.
         """
+        # Determine expenditures for the user across all accounts.
         response_by_account = dict()
         for acct_num in self.account_nums:
             response = self.api_call([user], [acct_num])
             processed = self.process_api_response(response)
             response_by_account[acct_num] = processed
 
+        # TODO turn this into a function that returns a string version of the report to be sent in an email.
         print('Report for {}'.format(user))
 
         # Determine if money was spent.
@@ -205,7 +208,7 @@ class ReportGenerator:
 
                     # Breakdown by services used.
                     for service, total in data[user].items():
-                        if service != 'Total':
+                        if service != 'Total':  # The total across all services is stored alongside them and should be ignored.
                             t = total['Total']
                             print('\t\t\t{:40} ${:.2f}'.format(service, t))
 
