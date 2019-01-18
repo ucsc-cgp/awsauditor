@@ -230,3 +230,30 @@ class ReportGenerator:
         report += '\n'
 
         return report
+    
+def send_email(recipient, email_body):
+    """
+    Send an email from Emily's address
+    :param recipient: the email address to send to
+    :param email_body: a string containing the entire email message
+    :return: none
+    """
+    sender = 'email_address'
+
+    msg = MIMEMultipart()  # set up the email
+    msg['Subject'] = 'Your AWS Expenses'
+    msg['From'] = sender
+    msg['To'] = recipient
+
+    msg.attach(MIMEText(email_body))
+
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s.starttls()
+    s.login("email_address", "password")
+
+    text = msg.as_string()
+
+    s.sendmail(sender, recipient, text)
+
+    s.quit()
+
