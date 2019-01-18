@@ -233,7 +233,7 @@ class ReportGenerator:
     
 def send_email(recipient, email_body):
     """
-    Send an email from Emily's address
+    Send an email.
     :param recipient: the email address to send to
     :param email_body: a string containing the entire email message
     :return: none
