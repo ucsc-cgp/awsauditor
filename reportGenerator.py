@@ -2,8 +2,11 @@ import boto3
 from collections import defaultdict
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 import smtplib
 import datetime
+import os
+from awsauditor.graphGenerator import GraphGenerator
 
 
 class ReportGenerator:
@@ -46,7 +49,7 @@ class ReportGenerator:
         try:
             day = datetime.datetime(y, m, d)
         except ValueError:
-            raise Exception('Please enter a valid value for end_date when initialzing a ReportGenerator.')
+            raise ValueError('Please enter a valid value for end_date when initialzing a ReportGenerator.')
 
         next_day = day + datetime.timedelta(days=1)  # datetime.date does not seem to support this functionality.
 
@@ -308,6 +311,14 @@ class ReportGenerator:
         :param str user: The email address of the user who the report is about.
         :param list(str) recipients: The recipient of the email. If not specified, will default to user.
         """
+
+        # TODO is it redundant to have a dictionary level for the user name when only one user is included?
+        if not os.path.exists("images/"):
+            os.mkdir("images/")
+
+        if not os.path.exists("images/%s" % user):  # create directory to store graphs in
+            os.mkdir("images/%s" % user)
+
         recipients = recipients or [user]
 
         # Determine expenditures for the user across all accounts.
@@ -317,20 +328,27 @@ class ReportGenerator:
             processed = self.process_api_response(response)
             response_by_account[acct_num] = processed
 
+        # Create graphics.
+        for acct in response_by_account:
+            if response_by_account[acct][user]:
+                plt = GraphGenerator.graph_individual(user, response_by_account[acct][user])  # create graphical reports
+                plt[0].savefig("images/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
+                plt[0].close()
+
         report = self.create_report_body(user, response_by_account)
 
         # Send emails.
         for recipient in recipients:
-            self.send_email(recipient, report)
+            self.send_email(recipient, report, "images/%s" % user)  # send the text and graphs together in an email
 
-    def send_email(self, recipient, email_body):
+    def send_email(self, recipient, email_body, attachments_path=None):
         """
         Send the report to a recipient.
 
         :param recipient: the email address to send to
         :param email_body: a string containing the entire email message
         """
-        sender = 'FAKE_EMAIL@ucsc.edu'
+        sender = "FAKE_EMAIL"
 
         msg = MIMEMultipart()  # set up the email
         msg['Subject'] = 'Your AWS Expenses - from {} - {}'.format(self.start_date, self.end_date)
@@ -339,9 +357,15 @@ class ReportGenerator:
 
         msg.attach(MIMEText(email_body))
 
+        if attachments_path:
+            for png in os.listdir(attachments_path):
+                with open(os.path.join(attachments_path, png), 'rb') as p:
+                    image = MIMEImage(p.read())
+                msg.attach(image)
+
         s = smtplib.SMTP('smtp.gmail.com', 587)
         s.starttls()
-        s.login(sender, 'FAKE_PASSWORD')
+        s.login(sender, "FAKE_PASSWORD")
 
         text = msg.as_string()
 
