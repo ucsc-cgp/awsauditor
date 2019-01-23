@@ -304,12 +304,13 @@ class ReportGenerator:
         for recipient in recipients:
             self.send_email(recipient, report)
 
-    def send_individual_report(self, user, recipients=None):
+    def send_individual_report(self, user, recipients=None, clean=True):
         """
         Email a report detailing the expenditures of a given user.
 
         :param str user: The email address of the user who the report is about.
         :param list(str) recipients: The recipient of the email. If not specified, will default to user.
+        :param bool clean: If true, delete the image directory at the end.
         """
 
         # TODO is it redundant to have a dictionary level for the user name when only one user is included?
@@ -331,7 +332,8 @@ class ReportGenerator:
         # Create graphics.
         for acct in response_by_account:
             if response_by_account[acct][user]:
-                plt = GraphGenerator.graph_individual(user, response_by_account[acct][user])  # create graphical reports
+                plt = GraphGenerator.graph_individual(user, response_by_account[acct][user], "%s's %s Costs This Month"
+                                                      % (user, self.nums_to_aliases[acct]))  # create graphical reports
                 plt[0].savefig("images/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
                 plt[0].close()
 
@@ -340,6 +342,9 @@ class ReportGenerator:
         # Send emails.
         for recipient in recipients:
             self.send_email(recipient, report, "images/%s" % user)  # send the text and graphs together in an email
+
+        if clean:
+            GraphGenerator.clean()  # delete images once they're used
 
     def send_email(self, recipient, email_body, attachments_path=None):
         """
@@ -370,5 +375,4 @@ class ReportGenerator:
         text = msg.as_string()
 
         s.sendmail(sender, recipient, text)
-
         s.quit()

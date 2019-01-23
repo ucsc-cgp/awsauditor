@@ -195,14 +195,15 @@ class GraphGenerator:
         return plot
 
     @staticmethod
-    def graph_individual(name, data):
+    def graph_individual(name, data, title):
         """
         Make a pyplot stacked bar graph of a specific person's costs split up by service
         :param str name: the name to use
         :param dict data: data in dictionary form
+        :param str title: title to display above the graph
         :return: matplotlib plot
         """
-        plot = GraphGenerator.graph_bar(data, name + "'s AWS Costs This Month")
+        plot = GraphGenerator.graph_bar(data, title)
         return plot
 
     @staticmethod
