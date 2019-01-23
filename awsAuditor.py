@@ -3,8 +3,8 @@ from awsauditor.reportGenerator import ReportGenerator
 
 def main():
     # TODO Grab these from a commandline?
-    users = ['lblauvel@ucsc.edu', 'jrbrenna@ucsc.edu', 'jshands@ucsc.edu', 'mkrause1@ucsc.edu', ]
-    recipients = ['bvandebr@ucsc.edu']
+    users = ['user1@email.com', 'email2@email.com' ]
+    recipients = ['manager@email.edu']
     start = '2019-01-01'
     end = '2019-01-24'  # Date is inclusive.
 
