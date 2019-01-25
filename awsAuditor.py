@@ -1,4 +1,4 @@
-from awsauditor.reportGenerator import ReportGenerator
+from reportGenerator import ReportGenerator
 
 
 def main():

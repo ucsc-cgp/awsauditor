@@ -6,7 +6,8 @@ from email.mime.image import MIMEImage
 import smtplib
 import datetime
 import os
-from awsauditor.graphGenerator import GraphGenerator
+import pprint
+from graphGenerator import GraphGenerator
 
 
 class ReportGenerator:
@@ -36,6 +37,7 @@ class ReportGenerator:
 
         self.nums_to_aliases = self.build_nums_to_aliases(accounts)
         self.account_nums = self.nums_to_aliases.keys()
+        self.nums_to_aliases["Total"] = "Total"
 
     @staticmethod
     def increment_date(date):
@@ -313,7 +315,6 @@ class ReportGenerator:
         :param bool clean: If true, delete the image directory at the end.
         """
 
-        # TODO is it redundant to have a dictionary level for the user name when only one user is included?
         if not os.path.exists("images/"):
             os.mkdir("images/")
 
@@ -329,9 +330,13 @@ class ReportGenerator:
             processed = self.process_api_response(response)
             response_by_account[acct_num] = processed
 
+        total = ReportGenerator.sum_dictionary(response_by_account)
+        response_by_account["Total"] = total
+
         # Create graphics.
         for acct in response_by_account:
-            if response_by_account[acct][user]:
+            if user in response_by_account[acct]:
+                print(self.nums_to_aliases[acct])
                 plt = GraphGenerator.graph_individual(user, response_by_account[acct][user], "%s's %s Costs This Month"
                                                       % (user, self.nums_to_aliases[acct]))  # create graphical reports
                 plt[0].savefig("images/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
@@ -339,12 +344,24 @@ class ReportGenerator:
 
         report = self.create_report_body(user, response_by_account)
 
-        # Send emails.
-        for recipient in recipients:
+        for recipient in recipients:  # Send emails
             self.send_email(recipient, report, "images/%s" % user)  # send the text and graphs together in an email
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
+
+    @staticmethod
+    def sum_dictionary(acct_dic):
+        """
+        Merge all dictionaries within this dictionary together into a total for all accounts
+        :param acct_dic: input dictionary
+        :return: dictionary
+        """
+        key, value = acct_dic.popitem()
+        total = value
+        for a in acct_dic:
+            total = GraphGenerator.merge_dictionaries(total, acct_dic[a])
+        return total
 
     def send_email(self, recipient, email_body, attachments_path=None):
         """

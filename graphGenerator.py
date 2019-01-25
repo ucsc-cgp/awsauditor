@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import os
+import pprint
 import shutil
 
 
@@ -103,6 +104,48 @@ class GraphGenerator:
         return xvals, yvals
 
     @staticmethod
+    def merge(dic1, dic2):
+        """
+        Merge dictionaries by adding the values together
+        :param dic1: input dictionary
+        :param dic2: input dictionary
+        :return: modified dic2
+        """
+        dic2_copy = copy.deepcopy(dic2)
+        for key, val in dic1.items():
+            if key in dic2_copy:
+                dic2_copy[key] += dic1[key]
+            else:
+                dic2_copy[key] = dic1[key]
+        return dic2_copy
+
+    @staticmethod
+    def merge_dictionaries(dic1, dic2):
+        """
+        Combine two three-layer dictionaries
+        :param dic1: input dictionary
+        :param dic2: input dictionary
+        :return: modified dic2
+        """
+        dic2_copy = copy.deepcopy(dic2)
+        for name in dic1:
+            if name in dic2_copy:
+                if name == "Total":
+                    dic2_copy[name] += dic1[name]
+                else:
+                    for service in dic1[name]:
+                        if service == "Total":
+                            dic2_copy[name][service] += dic1[name][service]
+                        else:
+                            if service in dic2[name]:
+                                dic2_copy[name][service] = GraphGenerator.merge(dic1[name][service], dic2_copy[name][service])
+                            else:
+                                dic2_copy[name][service] = dic1[name][service]
+            else:
+                dic2_copy[name] = dic1[name]
+        return dic2_copy
+
+    @staticmethod
     def graph_bar(data, title, total=False, first=None):
         """
         Display a matplotlib bar graph of data
@@ -128,6 +171,9 @@ class GraphGenerator:
         # keep track of where the top of each stacked bar is after each iteration
         prev = [0 for i in range(1, now.day)]  # each bar starts with a height of 0
 
+        print(title)
+        pp = pprint.PrettyPrinter()
+        pp.pprint(data)
         data.pop('Total')  # do not graph the total
 
         if first:  # if specified, graph this person's data first so it all appears at the bottom and is easier to read
