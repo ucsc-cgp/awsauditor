@@ -21,6 +21,8 @@ class ReportGenerator:
         """
         Create boto3.client and dictionaries that will be used in later functions.
 
+        Note that your results will be restricted by your boto3 permissions.
+
         :param str start_date: The first date of the inquiry. (inclusive)
         :param str end_date: The last date of the inquiry. (exclusive)
         :param list(str) accounts: The accounts for which information will be gathered.
@@ -41,6 +43,8 @@ class ReportGenerator:
     def increment_date(date):
         """
         Determine the date after a given date
+
+        :raises ValueError: When an invalid date is given.
         :param str date: A string representation of a date in the YYYY-MM-DD format.
         :returns: A string representation of a date in the YYYY-MM-DD format.
         """
@@ -60,6 +64,8 @@ class ReportGenerator:
         """
         Create a dictionary that pairs account numbers with their aliases.
 
+        Note that your results will be restricted by your boto3 permissions.
+
         :param aliases: A list of account aliases.
         :return dict: A dictionary that pairs account numbers with their aliases.
         """
@@ -78,7 +84,7 @@ class ReportGenerator:
         """
         A helper function for determining the proper filter for the AWS Cost Explorer API call.
 
-        By default this will return a filter for each user associated with all of the accounts in self.acounts.
+        By default this will return a filter for each user associated with all of the accounts in self.accounts.
         A list of users and accounts can be specified to narrow your search results.
 
         :param list(str) users: A list of users' email addresses.
@@ -344,6 +350,10 @@ class ReportGenerator:
     def send_email(self, recipient, email_body, attachments_path=None):
         """
         Send the report to a recipient.
+
+        Unfortunately, at this time you must hard-code your own email address and password into the source code
+        to enable this functionality. It might be necessary to enable third-party access to your email account. If
+        you are using a gmail account you will be prompted to allow this after your first attempted use.
 
         :param recipient: the email address to send to
         :param email_body: a string containing the entire email message
