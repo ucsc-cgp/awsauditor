@@ -8,7 +8,9 @@ import shutil
 
 
 class GraphGenerator:
-
+    """
+    A tool for creating graphs from data generated in a ReportGenerator object.
+    """
     def __init__(self):
         pass
 
@@ -50,6 +52,7 @@ class GraphGenerator:
     def rename_data(data):
         """
         Combine i- data into one dictionary and rename blank names to 'unnamed'
+
         :param dict data: dictionary to use
         :return: renamed dictionary
         """
@@ -65,7 +68,8 @@ class GraphGenerator:
     def list_data(data, name, total=False):
         """
         Convert a dictionary that maps names to their daily costs into a tuple of two lists representing x and y values
-        for purposes of graphing
+        for purposes of graphing.
+
         :param dict data: the dictionary containing the specified name and desired data
         :param str name: the name to refer to in the dictionary
         :param bool total: if set to True, the cost for each day is cumulative, a month-to-date total each day
@@ -105,7 +109,8 @@ class GraphGenerator:
     @staticmethod
     def graph_bar(data, title, total=False, first=None):
         """
-        Display a matplotlib bar graph of data
+        Display a matplotlib bar graph of data.
+
         :param dict data: dictionary mapping names to lists of their daily costs
         :param str title: title to display above the graph
         :param bool total: if true, display data as a cumulative total cost each day
@@ -153,40 +158,10 @@ class GraphGenerator:
         return plt, legend
 
     @staticmethod
-    def graph_stack(data, title, total=False, first=None):
-        """
-        Return a matplotlib stack plot of data
-        :param dict data: dictionary mapping names to lists of their daily costs
-        :param str title: title to display above the graph
-        :param bool total: if true, display data as a total cumulative cost each day
-        :param str first: if specified, plot this person's data first so it is easier for them to read
-        :return: matplotlib plot
-        """
-        # plt.style.use("~/.matplotlib/elip12.mplstyle")  # style definition
-
-        axes = plt.axes()
-        axes.xaxis.set_major_locator(ticker.MultipleLocator(1))  # set the tick marks to integer values
-
-        # label axes
-        plt.xlabel("date")
-        plt.ylabel("cost")
-        plt.title(title)
-
-        y_sets = []
-        for name in data:
-            result = GraphGenerator.list_data(data, name, total=total)
-            x = result[0]
-            y_sets.append(result[1])
-        y = np.vstack(y_sets)  # stack all the y data sets into a 2d array
-        plt.stackplot(x, y, label=name)
-
-        plt.legend()
-        return plt
-
-    @staticmethod
     def graph_everyone(name=None):
         """
-        Make a pyplot stacked bar graph of everyone's costs
+        Make a pyplot stacked bar graph of everyone's costs.
+
         :param str name: if specified, plot this person's data first, so it's easier for them to read
         :return: matplotlib plot
         """
@@ -197,7 +172,8 @@ class GraphGenerator:
     @staticmethod
     def graph_individual(name, data):
         """
-        Make a pyplot stacked bar graph of a specific person's costs split up by service
+        Make a pyplot stacked bar graph of a specific person's costs split up by service.
+
         :param str name: the name to use
         :param dict data: data in dictionary form
         :return: matplotlib plot
@@ -208,7 +184,7 @@ class GraphGenerator:
     @staticmethod
     def clean():
         """
-        Erase everything in the images directory
+        Erase everything in the images directory.
         """
         if os.path.exists("images"):
             shutil.rmtree("images")

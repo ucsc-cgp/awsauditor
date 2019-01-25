@@ -13,6 +13,9 @@ class ReportGenerator:
     """
     A tool for creating reports based off of AWS Cost Explorer API responses.
 
+    Note that each Cost Explorer API request costs $0.01
+    See the following for more information: https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/ce-what-is.html
+
     See the following link for more information about the response and request syntax and options:
     https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
     """
@@ -66,10 +69,9 @@ class ReportGenerator:
 
         Note that your results will be restricted by your boto3 permissions.
 
-        :param aliases: A list of account aliases.
+        :param list(str) aliases: A list of account aliases.
         :return dict: A dictionary that pairs account numbers with their aliases.
         """
-
         client = boto3.client('organizations')
         response = client.list_accounts()
 
@@ -91,7 +93,6 @@ class ReportGenerator:
         :param list(str) account_nums: A list of the account numbers of interest.
         :return dict: The proper filter to be used in the API call.
         """
-
         users_filter = {'And': [{'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': account_nums or self.account_nums}},
                                 {'Tags': {'Key': 'Owner', 'Values': users}}]}
         no_users_filter = {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': account_nums or self.account_nums}}
@@ -221,7 +222,7 @@ class ReportGenerator:
 
         The management report will detail how much was spent on each account and by who.
 
-        :param response_by_account: A dictionary containing expenditure data organized by account.
+        :param dict response_by_account: A dictionary containing expenditure data organized by account.
         :return str report: A string containing the report.
         """
         report = '\nReport for ' + ', '.join(self.nums_to_aliases.values()) + '\n'
@@ -255,8 +256,8 @@ class ReportGenerator:
         """
         Create a string version of a report detailing the expenditures of a user.
 
-        :param user: The email address of the user receiving the report.
-        :param response_by_account: A dictionary containing expenditure data organized by account.
+        :param str user: The email address of the user receiving the report.
+        :param dict response_by_account: A dictionary containing expenditure data organized by account.
         :return str report: A string containing the report.
         """
         spent_money = sum([a['Total'] for a in response_by_account.values()])
@@ -317,7 +318,6 @@ class ReportGenerator:
         :param str user: The email address of the user who the report is about.
         :param list(str) recipients: The recipient of the email. If not specified, will default to user.
         """
-
         # TODO is it redundant to have a dictionary level for the user name when only one user is included?
         if not os.path.exists("images/"):
             os.mkdir("images/")
@@ -355,8 +355,8 @@ class ReportGenerator:
         to enable this functionality. It might be necessary to enable third-party access to your email account. If
         you are using a gmail account you will be prompted to allow this after your first attempted use.
 
-        :param recipient: the email address to send to
-        :param email_body: a string containing the entire email message
+        :param str recipient: the email address to send to
+        :param str email_body: a string containing the entire email message
         """
         sender = "FAKE_EMAIL"
 
