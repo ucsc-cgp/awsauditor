@@ -36,13 +36,14 @@ class ReportGenerator:
         self.client = boto3.client('ce', region_name='us-east-1')  # Region needs to be specified; Cost Explorer hosted here.
 
         self.nums_to_aliases = self.build_nums_to_aliases(accounts)
-        self.account_nums = self.nums_to_aliases.keys()
+        self.account_nums = [num for num in self.nums_to_aliases]
         self.nums_to_aliases["Total"] = "Total"
 
     @staticmethod
     def increment_date(date):
         """
         Determine the date after a given date
+
         :param str date: A string representation of a date in the YYYY-MM-DD format.
         :returns: A string representation of a date in the YYYY-MM-DD format.
         """
@@ -51,7 +52,7 @@ class ReportGenerator:
         try:
             day = datetime.datetime(y, m, d)
         except ValueError:
-            raise ValueError('Please enter a valid value for end_date when initialzing a ReportGenerator.')
+            raise ValueError('Please enter a valid value for end_date when initializing a ReportGenerator.')
 
         next_day = day + datetime.timedelta(days=1)  # datetime.date does not seem to support this functionality.
 
@@ -92,9 +93,12 @@ class ReportGenerator:
                                 {'Tags': {'Key': 'Owner', 'Values': users}}]}
         no_users_filter = {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': account_nums or self.account_nums}}
 
+        #pp = pprint.PrettyPrinter()
+        #pp.pprint(no_users_filter)
+
         return users_filter if users else no_users_filter
 
-    def api_call(self, users=None, account_nums=None):
+    def api_call(self, users=None, account_nums=None, group_by=None):
         """
         Retrieve daily cost information for a specific user broken down by the user and service used.
 
@@ -107,12 +111,22 @@ class ReportGenerator:
                                     data for all of the accounts specified in self.accounts.
         :return dict response: The response from the AWS Cost Explorer API. See  for more information.
         """
-        response = self.client.get_cost_and_usage(
-            Filter=self.determine_filters(users, account_nums),
-            Granularity=self.granularity,
-            GroupBy=[
-                # The order of the elements of this list matters for ReportGenerator.process_api_response.
-                # Owner & service must be at indicies 0 & 1, respectively.
+        if group_by == "Owner":
+            group_list = [
+                {
+                    'Type': 'TAG',
+                    'Key': 'Owner'
+                }]
+        elif group_by == "Service":
+            group_list = [
+                {
+                    'Type': 'DIMENSION',
+                    'Key': 'SERVICE'
+                }
+            ]
+        else:
+            group_list = [  # The order of the elements of this list matters for ReportGenerator.process_api_response.
+                            # Owner & service must be at indices 0 & 1, respectively.
                 {
                     'Type': 'TAG',
                     'Key': 'Owner'
@@ -121,17 +135,24 @@ class ReportGenerator:
                     'Type': 'DIMENSION',
                     'Key': 'SERVICE'
                 }
-            ],
+
+            ]
+        response = self.client.get_cost_and_usage(
+            Filter=self.determine_filters(users, account_nums),
+            Granularity=self.granularity,
+            GroupBy=group_list,
             Metrics=self.metrics,
             TimePeriod={'End': self.increment_date(self.end_date),  # Cost Explorer API's query has an exclusive upper bound.
                         'Start': self.start_date}
         )
+        #pp = pprint.PrettyPrinter()
+        #pp.pprint(response)
         return response
 
     @staticmethod
-    def process_api_response(response):
+    def process_api_response(response, levels=2):
         """
-        Turns the response from the AWS Cost Explorer API and turns it into more accessable data.
+        Turns the response from the AWS Cost Explorer API and turns it into more accessible data.
 
         The returned object is a dictionary of dictionaries that associates a service with a dictionary associating
         dates and costs.
@@ -165,51 +186,91 @@ class ReportGenerator:
         :param dict response: The response from the AWS Cost Explorer API.
         :returns defaultdict(defaultdict(dict)) processed: Data from the response organized by service:date:cost.
         """
-        processed = defaultdict(lambda: defaultdict(dict))
+
 
         daily_data = response['ResultsByTime']
 
-        # Create dict associating dates and costs, ordered by service.
-        for day_dict in daily_data:
-            date = day_dict['TimePeriod']['Start']
+        # Use this if the api call was made with group_by BOTH service and owner (for individual reports)
+        if levels == 2:  # Create dict with the structure {owner: {service: {date: cost}}}
+            processed = defaultdict(lambda: defaultdict(dict))
 
-            services_used = day_dict['Groups']
-            for s in services_used:
-                owner = s['Keys'][0].split('$')[1] or 'Untagged'
-                cost = float(s['Metrics']['BlendedCost']['Amount'])
-                if cost >= 0:  # The response contained large negative numbers associated with ''. This rules them out.
-                    service = s['Keys'][1]
+            for day_dict in daily_data:
+                date = day_dict['TimePeriod']['Start']
 
-                    if owner.startswith('i-'):
-                        owner = 'i-*'
-                        if processed.get(owner) and processed.get(owner).get(service) and processed.get(owner).get(service).get(date):
-                            processed[owner][service][date] += cost
+                services_used = day_dict['Groups']
+                for s in services_used:
+                    owner = s['Keys'][0].split('$')[1] or 'Untagged'
+                    cost = float(s['Metrics']['BlendedCost']['Amount'])
+                    if cost >= 0:  # The response contained large negative numbers associated with ''. This rules them out.
+                        service = s['Keys'][1]
+
+                        if owner.startswith('i-'):
+                            owner = 'i-*'
+                            if processed.get(owner) and processed.get(owner).get(service) and processed.get(owner).get(service).get(date):
+                                processed[owner][service][date] += cost
+                            else:
+                                processed[owner][service][date] = cost
                         else:
                             processed[owner][service][date] = cost
+
+            # Calculate totals for each owner, service and overall.
+            everyone_total = 0.0
+            for owner in processed:
+                owner_total = 0.0
+
+                for service in processed[owner]:
+                    service_total = 0.0
+
+                    for cost in processed[owner][service].values():
+                        service_total += cost
+                        owner_total += cost
+                        everyone_total += cost
+
+                    processed[owner][service]['Total'] = service_total
+                processed[owner]['Total'] = owner_total
+            processed['Total'] = everyone_total
+
+        # Use this if the api call was made with just service OR owner (for management reports)
+        elif levels == 1:  # Create dict with the structure {owner: {date: cost}}
+            processed = defaultdict(lambda: defaultdict())
+
+            for day_dict in daily_data:
+                date = day_dict['TimePeriod']['Start']
+                owners = day_dict['Groups']
+                for o in owners:
+                    if o['Keys'][0].startswith('Owner$'):
+                        owner = o['Keys'][0].split('$')[1] or 'Untagged'
                     else:
-                        processed[owner][service][date] = cost
+                        owner = o['Keys'][0] or 'Untagged'
 
-        # TODO Add an 'Previous' total which the day before's total.
-        #  This will be helpful in determining how much was spent before the most recent day.
+                    cost = float(o['Metrics']['BlendedCost']['Amount'])
+                    if cost >= 0:
+                        if owner.startswith('i-'):
+                            owner = 'i-*'
+                            if processed.get(owner) and processed.get(owner).get(date):
+                                processed[owner][date] += cost
+                            else:
+                                processed[owner][date] = cost
+                        else:
+                            processed[owner][date] = cost
 
-        # Calculate totals for each owner, service and overall.
-        everyone_total = 0.0
-        for owner in processed:
-            owner_total = 0.0
+            everyone_total = 0.0
+            for owner in processed:
+                owner_total = 0.0
 
-            for service in processed[owner]:
-                service_total = 0.0
-
-                for cost in processed[owner][service].values():
-                    service_total += cost
+                for cost in processed[owner].values():
                     owner_total += cost
                     everyone_total += cost
 
-                processed[owner][service]['Total'] = service_total
-            processed[owner]['Total'] = owner_total
-        processed['Total'] = everyone_total
+                processed[owner]['Total'] = owner_total
+            processed['Total'] = everyone_total
 
+        #pp = pprint.PrettyPrinter()
+        #pp.pprint(processed)
         return processed
+
+        # TODO Add an 'Previous' total which the day before's total.
+        #  This will be helpful in determining how much was spent before the most recent day.
 
     def create_management_report_body(self, response_by_account):
         """
@@ -286,25 +347,54 @@ class ReportGenerator:
 
         return report
 
-    def send_management_report(self, recipients):
+    def send_management_report(self, recipient, clean=True):
         """
         Email a report, tailored to managers, to a list of recipients.
 
         :param list(str) recipients: The recipients of the email. Defaults to the value of users.
         """
+        if not os.path.exists("images/"): # create directory to store graphs in
+            os.mkdir("images/")
+
+        if not os.path.exists("images/%s" % recipient):
+            os.mkdir("images/%s" % recipient)
+
         response_by_account = dict()
 
         # Determine expenditures across all accounts.
         for acct_num in self.account_nums:
-            response = self.api_call(account_nums=[acct_num])
-            processed = self.process_api_response(response)
-            response_by_account[acct_num] = processed
+            response_by_account[acct_num] = {}
+            for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
+                response = self.api_call(account_nums=[acct_num], group_by=category)
+                processed = self.process_api_response(response, levels=1)
+                response_by_account[acct_num][category] = processed
 
-        report = self.create_management_report_body(response_by_account)
+        # Create graphics.
+        for acct in response_by_account:
+            # Make a graph for this account organized by owner and save it as a png
+            plt_by_owner = GraphGenerator.graph_individual(response_by_account[acct]['Owner'], "%s Costs This Month By Owner" % self.nums_to_aliases[acct])
+
+            plt_by_owner[0].savefig("images/%s/%s_by_owner.png" % (recipient, acct), bbox_extra_artists=(plt_by_owner[1],),
+                                    bbox_inches='tight', dpi=200)
+            plt_by_owner[0].close()
+
+            # Make a graph for this account organized by service and save it as a png
+            plt_by_service = GraphGenerator.graph_individual(response_by_account[acct]['Service'], "%s Costs This Month By Service" % self.nums_to_aliases[acct])
+
+            plt_by_service[0].savefig("images/%s/%s_by_service.png" % (recipient, acct), bbox_extra_artists=(plt_by_service[1],),
+                                       bbox_inches='tight', dpi=200)
+            plt_by_service[0].close()
+
+            # Add in the total field for purposes of making the text report
+            response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'], response_by_account[acct]['Owner']['Total'])
+
+        report = self.create_management_report_body(response_by_account)  # Make the text report
 
         # Send emails.
-        for recipient in recipients:
-            self.send_email(recipient, report)
+        self.send_email(recipient, report, "images/%s" % recipient)
+
+        if clean:
+            GraphGenerator.clean()  # delete images once they're used
 
     def send_individual_report(self, user, recipients=None, clean=True):
         """
@@ -335,10 +425,10 @@ class ReportGenerator:
 
         # Create graphics.
         for acct in response_by_account:
-            if user in response_by_account[acct]:
-                print(self.nums_to_aliases[acct])
-                plt = GraphGenerator.graph_individual(user, response_by_account[acct][user], "%s's %s Costs This Month"
-                                                      % (user, self.nums_to_aliases[acct]))  # create graphical reports
+            if user in response_by_account[acct]:  # create graphical reports
+
+                plt = GraphGenerator.graph_individual(response_by_account[acct][user], "%s's %s Costs This Month"
+                                                      % (user, self.nums_to_aliases[acct]))
                 plt[0].savefig("images/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
                 plt[0].close()
 
@@ -353,7 +443,8 @@ class ReportGenerator:
     @staticmethod
     def sum_dictionary(acct_dic):
         """
-        Merge all dictionaries within this dictionary together into a total for all accounts
+        Merge all dictionaries within this dictionary together into a total for all accounts.
+
         :param acct_dic: input dictionary
         :return: dictionary
         """
@@ -370,7 +461,7 @@ class ReportGenerator:
         :param recipient: the email address to send to
         :param email_body: a string containing the entire email message
         """
-        sender = "FAKE_EMAIL"
+        sender = "esoth@ucsc.edu"
 
         msg = MIMEMultipart()  # set up the email
         msg['Subject'] = 'Your AWS Expenses - from {} - {}'.format(self.start_date, self.end_date)
@@ -387,7 +478,7 @@ class ReportGenerator:
 
         s = smtplib.SMTP('smtp.gmail.com', 587)
         s.starttls()
-        s.login(sender, "FAKE_PASSWORD")
+        s.login(sender, "@ppleblOss0m")
 
         text = msg.as_string()
 

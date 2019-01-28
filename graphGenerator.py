@@ -51,6 +51,7 @@ class GraphGenerator:
     def rename_data(data):
         """
         Combine i- data into one dictionary and rename blank names to 'unnamed'
+
         :param dict data: dictionary to use
         :return: renamed dictionary
         """
@@ -66,7 +67,7 @@ class GraphGenerator:
     def list_data(data, name, total=False):
         """
         Convert a dictionary that maps names to their daily costs into a tuple of two lists representing x and y values
-        for purposes of graphing
+
         :param dict data: the dictionary containing the specified name and desired data
         :param str name: the name to refer to in the dictionary
         :param bool total: if set to True, the cost for each day is cumulative, a month-to-date total each day
@@ -107,10 +108,14 @@ class GraphGenerator:
     def merge(dic1, dic2):
         """
         Merge dictionaries by adding the values together
+
         :param dic1: input dictionary
         :param dic2: input dictionary
         :return: modified dic2
         """
+        pp = pprint.PrettyPrinter()
+        pp.pprint(dic1)
+
         dic2_copy = copy.deepcopy(dic2)
         for key, val in dic1.items():
             if key in dic2_copy:
@@ -123,6 +128,7 @@ class GraphGenerator:
     def merge_dictionaries(dic1, dic2):
         """
         Combine two three-layer dictionaries
+
         :param dic1: input dictionary
         :param dic2: input dictionary
         :return: modified dic2
@@ -149,6 +155,7 @@ class GraphGenerator:
     def graph_bar(data, title, total=False, first=None):
         """
         Display a matplotlib bar graph of data
+
         :param dict data: dictionary mapping names to lists of their daily costs
         :param str title: title to display above the graph
         :param bool total: if true, display data as a cumulative total cost each day
@@ -172,9 +179,8 @@ class GraphGenerator:
         prev = [0 for i in range(1, now.day)]  # each bar starts with a height of 0
 
         print(title)
-        pp = pprint.PrettyPrinter()
-        pp.pprint(data)
-        data.pop('Total')  # do not graph the total
+        #pp = pprint.PrettyPrinter()
+        #pp.pprint(data)
 
         if first:  # if specified, graph this person's data first so it all appears at the bottom and is easier to read
             result = GraphGenerator.list_data(data, first, total=total)
@@ -183,17 +189,18 @@ class GraphGenerator:
 
         counter = 0  # iteration counter to keep track of which color to use
         for name in data:
-            if first:
-                if name == first:
-                    continue  # if the first person to graph was specified, don't graph their data again
-            result = GraphGenerator.list_data(data, name, total=total)
+            if name != 'Total':
+                if first:
+                    if name == first:
+                        continue  # if the first person to graph was specified, don't graph their data again
+                result = GraphGenerator.list_data(data, name, total=total)
 
-            plt.bar(result[0], result[1], bottom=prev, label=name, color=colors[counter])
+                plt.bar(result[0], result[1], bottom=prev, label=name, color=colors[counter])
 
-            # update the value of the height of each stacked bar
-            prev = [result[1][i] + prev[i] for i in range(len(prev))]
+                # update the value of the height of each stacked bar
+                prev = [result[1][i] + prev[i] for i in range(len(prev))]
 
-            counter += 1  # update the iteration counter
+                counter += 1  # update the iteration counter
 
         legend = plt.legend(bbox_to_anchor=(0.5, -0.1), loc="upper center")  # place the legend outside the plot
         return plt, legend
@@ -202,6 +209,7 @@ class GraphGenerator:
     def graph_stack(data, title, total=False, first=None):
         """
         Return a matplotlib stack plot of data
+
         :param dict data: dictionary mapping names to lists of their daily costs
         :param str title: title to display above the graph
         :param bool total: if true, display data as a total cumulative cost each day
@@ -230,20 +238,24 @@ class GraphGenerator:
         return plt
 
     @staticmethod
-    def graph_everyone(name=None):
+    def graph_everyone(data, title, name=None):
         """
         Make a pyplot stacked bar graph of everyone's costs
+
+        :param dict data: data in dictionary form
+        :param str title: title to display above the graph
         :param str name: if specified, plot this person's data first, so it's easier for them to read
         :return: matplotlib plot
         """
-        data = GraphGenerator.rename_data(get_cost_by('Owner'))
-        plot = GraphGenerator.graph_bar(data, "Everyone's costs", first=name)
+        data = GraphGenerator.rename_data(data)
+        plot = GraphGenerator.graph_bar(data, title, first=name)
         return plot
 
     @staticmethod
-    def graph_individual(name, data, title):
+    def graph_individual(data, title):
         """
         Make a pyplot stacked bar graph of a specific person's costs split up by service
+
         :param str name: the name to use
         :param dict data: data in dictionary form
         :param str title: title to display above the graph
@@ -254,8 +266,6 @@ class GraphGenerator:
 
     @staticmethod
     def clean():
-        """
-        Erase everything in the images directory
-        """
+        """Erase everything in the images directory"""
         if os.path.exists("images"):
             shutil.rmtree("images")
