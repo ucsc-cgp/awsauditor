@@ -39,7 +39,7 @@ class ReportGenerator:
         self.metrics = metrics or ['BlendedCost']
         self.client = boto3.client('ce', region_name='us-east-1')  # Region needs to be specified; Cost Explorer hosted here.
 
-        self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases()
+        self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases_dicts()
         self.account_nums = self.nums_to_aliases.keys()
 
     @staticmethod
@@ -63,9 +63,9 @@ class ReportGenerator:
         return str(next_day).split(' ')[0]  # return just the date component of the datetime.datetime object.
 
     @staticmethod
-    def build_nums_to_aliases():
+    def build_nums_to_aliases_dicts():
         """
-        Create a dictionary that pairs account numbers with their aliases.
+        Create two dictionaries that pair account numbers with their aliases and vice versa.
 
         Note that your results will be restricted by your boto3 permissions.
 
