@@ -1,5 +1,5 @@
 # awsauditor
-A tool for interrogating AWS billing data using the Cost Explorer API. It makes customized reports in text and graphic form, and emails them out to people. awsauditor is intended for use with Amazon CloudWatch, so it can be automated to run daily. There is currently no command line tool to use awsauditor.
+A tool for interrogating AWS billing data using the Cost Explorer API. It makes customized reports in text and graphic form, and emails them out to people. awsauditor is intended for use in an AWS Lambda so it can be automated to run daily. There is currently no command line tool to use awsauditor.
 
 ## Usage
 We are using Chalice to create lambdas for awsauditor so that its dependencies, matplotlib and numpy, can be included easily in a package compatible with AWS Lambda.
