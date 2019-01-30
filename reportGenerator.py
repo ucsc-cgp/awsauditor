@@ -6,7 +6,7 @@ from email.mime.image import MIMEImage
 import smtplib
 import datetime
 import os
-from awsauditor.graphGenerator import GraphGenerator
+from graphGenerator import GraphGenerator
 
 
 class ReportGenerator:
@@ -20,7 +20,7 @@ class ReportGenerator:
     https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
     """
 
-    def __init__(self, start_date, end_date, accounts=None, granularity='DAILY', metrics=None):
+    def __init__(self, start_date, end_date, granularity='DAILY', metrics=None):
         """
         Create boto3.client and dictionaries that will be used in later functions.
 
@@ -39,7 +39,7 @@ class ReportGenerator:
         self.metrics = metrics or ['BlendedCost']
         self.client = boto3.client('ce', region_name='us-east-1')  # Region needs to be specified; Cost Explorer hosted here.
 
-        self.nums_to_aliases = self.build_nums_to_aliases(accounts)
+        self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases()
         self.account_nums = self.nums_to_aliases.keys()
 
     @staticmethod
@@ -63,24 +63,21 @@ class ReportGenerator:
         return str(next_day).split(' ')[0]  # return just the date component of the datetime.datetime object.
 
     @staticmethod
-    def build_nums_to_aliases(aliases=None):
+    def build_nums_to_aliases():
         """
         Create a dictionary that pairs account numbers with their aliases.
 
         Note that your results will be restricted by your boto3 permissions.
 
-        :param list(str) aliases: A list of account aliases.
-        :return dict: A dictionary that pairs account numbers with their aliases.
+        :return tuple(dict): A tuple of dictionaries that pairs account numbers with their aliases and vice versa.
         """
         client = boto3.client('organizations')
         response = client.list_accounts()
 
-        if aliases:
-            nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts'] if account['Name'] in aliases}
-        else:
-            nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts']}
+        nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts']}
+        aliases_to_nums = {account['Name']: account['Id'] for account in response['Accounts']}
 
-        return nums_to_aliases
+        return nums_to_aliases, aliases_to_nums
 
     def determine_filters(self, users=None, account_nums=None):
         """
@@ -90,7 +87,8 @@ class ReportGenerator:
         A list of users and accounts can be specified to narrow your search results.
 
         :param list(str) users: A list of users' email addresses.
-        :param list(str) account_nums: A list of the account numbers of interest.
+        :param list(str) account_nums: A list of the account numbers of interest. If unspecified will default to
+                                       self.account_nums (all accounts in the organization.)
         :return dict: The proper filter to be used in the API call.
         """
         users_filter = {'And': [{'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': account_nums or self.account_nums}},
@@ -225,7 +223,8 @@ class ReportGenerator:
         :param dict response_by_account: A dictionary containing expenditure data organized by account.
         :return str report: A string containing the report.
         """
-        report = '\nReport for ' + ', '.join(self.nums_to_aliases.values()) + '\n'
+        all_accts_total = 0.0
+        report = '\nReport for ' + ', '.join([self.nums_to_aliases[acct_num] for acct_num in response_by_account.keys()]) + '\n'
         report += '\tExpenditures from {} - {}\n\n'.format(self.start_date, self.end_date)
 
         for acct_num, acct_data in response_by_account.items():
@@ -239,6 +238,7 @@ class ReportGenerator:
                     if user != 'Total':  # The total across all users is stored alongside them and should be ignored.
 
                         total = expenditures['Total']
+                        all_accts_total += total
                         if total >= 0.01:
                             report += '\t\t\t{:26} ${:.2f}\n'.format(user, total)
                         else:
@@ -249,6 +249,9 @@ class ReportGenerator:
 
             else:
                 report += '\t\t\tNo Activity from {} - {}\n\n'.format(self.start_date, self.end_date)
+
+        if all_accts_total:
+            report += '\t\t{:30} ${}'.format('Total for all accounts:', round(all_accts_total,2))
 
         return report
 
@@ -291,16 +294,22 @@ class ReportGenerator:
 
         return report
 
-    def send_management_report(self, recipients):
+    def send_management_report(self, recipients, accounts=None):
         """
         Email a report, tailored to managers, to a list of recipients.
 
         :param list(str) recipients: The recipients of the email. Defaults to the value of users.
+        :param list(str) accounts: The account aliases of interest.
         """
         response_by_account = dict()
 
+        if accounts:
+            accounts = [self.aliases_to_nums[alias] for alias in accounts]
+        else:
+            accounts = self.account_nums
+
         # Determine expenditures across all accounts.
-        for acct_num in self.account_nums:
+        for acct_num in accounts:
             response = self.api_call(account_nums=[acct_num])
             processed = self.process_api_response(response)
             response_by_account[acct_num] = processed
@@ -311,13 +320,20 @@ class ReportGenerator:
         for recipient in recipients:
             self.send_email(recipient, report)
 
-    def send_individual_report(self, user, recipients=None):
+    def send_individual_report(self, user, recipients=None, accounts=None):
         """
         Email a report detailing the expenditures of a given user.
 
         :param str user: The email address of the user who the report is about.
         :param list(str) recipients: The recipient of the email. If not specified, will default to user.
+        :param list(str) accounts: The account aliases of interest. If not specified it will default to self.account_nums
+                                   (all accounts under the organization).
         """
+        if accounts:
+            accounts = [self.aliases_to_nums[alias] for alias in accounts]
+        else:
+            accounts = self.account_nums
+
         # TODO is it redundant to have a dictionary level for the user name when only one user is included?
         if not os.path.exists("images/"):
             os.mkdir("images/")
@@ -329,7 +345,7 @@ class ReportGenerator:
 
         # Determine expenditures for the user across all accounts.
         response_by_account = dict()
-        for acct_num in self.account_nums:
+        for acct_num in accounts:
             response = self.api_call([user], [acct_num])
             processed = self.process_api_response(response)
             response_by_account[acct_num] = processed
