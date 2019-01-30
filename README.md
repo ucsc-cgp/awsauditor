@@ -14,7 +14,7 @@ This role must include permissions to use AWS Organizations and AWS Cost Explore
 
 If you want awsauditor to run on a schedule, in app.py, replace the code under `@app.lambda_function` with that under `@app.schedule` (commented out by default). The given example will run at 10 AM every day. For more information about scheduling, see https://chalice.readthedocs.io/en/latest/topics/events.html.
 
-Create the lambda:
+From within the package directory, create the lambda:
 
 `chalice deploy`
 
