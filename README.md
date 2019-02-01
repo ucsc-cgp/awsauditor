@@ -1,22 +1,20 @@
 # awsauditor
-A tool for interrogating AWS billing data using the Cost Explorer API. It makes customized reports in text and graphic form, and emails them out to people. awsauditor is intended for use with Amazon CloudWatch, so it can be automated to run daily. There is currently no command line tool to use awsauditor.
+A tool for interrogating AWS billing data using the Cost Explorer API. It makes customized reports in text and graphic form, and emails them out to people. awsauditor is intended for use in an AWS Lambda so it can be automated to run daily. There is currently no command line tool to use awsauditor.
 
 ## Usage
-Download package.zip, which contains all the other files in the repo plus their dependencies, matplotlib and numpy.
-Install the AWS command line interface, if you haven't already:
+We are using Chalice to create lambdas for awsauditor so that its dependencies, matplotlib and numpy, can be included easily in a package compatible with AWS Lambda.
 
-`pip install aws`
+Download the entire package directory.
+Install chalice, if not already done so:
 
-Make a new lambda:
+`pip install chalice`
 
-`aws lambda create-function --function-name sendEmails --runtime python3.7 --role arn:aws:iam::862902209576:role/lambda_basic_execution --handler awsAuditor.main --zip-file fileb://package.zip`
+Edit .chalice/config.json to include ARN for the IAM role for the lambda to be created.
+This role must include permissions to use AWS Organizations and AWS Cost Explorer operations.
 
-Make a new CloudWatch event:
+If you want awsauditor to run on a schedule, in app.py, replace the code under `@app.lambda_function` with that under `@app.schedule` (commented out by default). The given example will run at 10 AM every day. For more information about scheduling, see https://chalice.readthedocs.io/en/latest/topics/events.html.
 
-`aws events put-rule --name emailSender --schedule-expression cron(0, 10, *, *, ?, *)`
+From within the package directory, create the lambda:
 
-Set the event to trigger the lambda (use the arn corresponding to your lambda):
+`chalice deploy`
 
-`aws events put-targets --rule emailSender --targets "Id=1","Arn=arn:aws:lambda:us-west-2:0000000000000000:function:reportTest"`
-
-Email credentials and recipients are hard-coded, and need to be modified.
