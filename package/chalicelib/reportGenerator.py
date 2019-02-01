@@ -6,7 +6,7 @@ from email.mime.image import MIMEImage
 import smtplib
 import datetime
 import os
-from package.chalicelib.graphGenerator import GraphGenerator
+from chalicelib.graphGenerator import GraphGenerator
 
 
 class ReportGenerator:
@@ -93,19 +93,7 @@ class ReportGenerator:
 
         return users_filter if users else no_users_filter
 
-    def api_call(self, users=None, account_nums=None, group_by=None):
-        """
-        Retrieve daily cost information for a specific user broken down by the user and service used.
-
-        By default this will return information about each user associated with all of the accounts in self.acounts.
-        A list of users and accounts can be specified to narrow your search results.
-
-        :param list(str) users: A list of usernames to collect data on. If unspecified the response will contain data
-                                for everyone from the accounts specified in self.accounts.
-        :param list(str) account_nums: A list of the account numbers of interest. If unspecified the response will contain
-                                    data for all of the accounts specified in self.accounts.
-        :return dict response: The response from the AWS Cost Explorer API. See  for more information.
-        """
+    def determine_groups(self, group_by=None):
         if group_by == "Owner":
             group_list = [
                 {
@@ -132,10 +120,26 @@ class ReportGenerator:
                 }
 
             ]
+        return group_list
+
+    def api_call(self, users=None, account_nums=None, group_by=None):
+        """
+        Retrieve daily cost information for a specific user broken down by the user and service used.
+
+        By default this will return information about each user associated with all of the accounts in self.acounts.
+        A list of users and accounts can be specified to narrow your search results.
+
+        :param list(str) users: A list of usernames to collect data on. If unspecified the response will contain data
+                                for everyone from the accounts specified in self.accounts.
+        :param list(str) account_nums: A list of the account numbers of interest. If unspecified the response will contain
+                                    data for all of the accounts specified in self.accounts.
+        :return dict response: The response from the AWS Cost Explorer API. See  for more information.
+        """
+
         response = self.client.get_cost_and_usage(
             Filter=self.determine_filters(users, account_nums),
             Granularity=self.granularity,
-            GroupBy=group_list,
+            GroupBy=determine_groups(group_by),
             Metrics=self.metrics,
             TimePeriod={'End': self.increment_date(self.end_date),  # Cost Explorer API's query has an exclusive upper bound.
                         'Start': self.start_date}
@@ -364,19 +368,7 @@ class ReportGenerator:
 
         # Create graphics.
         for acct in response_by_account:
-            # Make a graph for this account organized by owner and save it as a png
-            plt_by_owner = GraphGenerator.graph_individual(response_by_account[acct]['Owner'], "%s Costs This Month By Owner" % self.nums_to_aliases[acct])
-
-            plt_by_owner[0].savefig("/tmp/%s/%s_by_owner.png" % (recipient, acct), bbox_extra_artists=(plt_by_owner[1],),
-                                    bbox_inches='tight', dpi=200)
-            plt_by_owner[0].close()
-
-            # Make a graph for this account organized by service and save it as a png
-            plt_by_service = GraphGenerator.graph_individual(response_by_account[acct]['Service'], "%s Costs This Month By Service" % self.nums_to_aliases[acct])
-
-            plt_by_service[0].savefig("/tmp/%s/%s_by_service.png" % (recipient, acct), bbox_extra_artists=(plt_by_service[1],),
-                                       bbox_inches='tight', dpi=200)
-            plt_by_service[0].close()
+            self.create_account_graphics(response_by_account, recipient, acct)
 
             # Add in the total field for purposes of making the text report
             response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'], response_by_account[acct]['Owner']['Total'])
@@ -388,6 +380,26 @@ class ReportGenerator:
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
+
+    def create_account_graphics(self, response_by_account, recipient, acct):
+        # Make a graph for this account organized by owner and save it as a png
+        plt_by_owner = GraphGenerator.graph_individual(response_by_account[acct]['Owner'],
+                                                       "%s Costs This Month By Owner" % self.nums_to_aliases[acct],
+                                                       self.start_date, self.end_date)
+
+        plt_by_owner[0].savefig("/tmp/%s/%s_by_owner.png" % (recipient, acct), bbox_extra_artists=(plt_by_owner[1],),
+                                bbox_inches='tight', dpi=200)
+        plt_by_owner[0].close()
+
+        # Make a graph for this account organized by service and save it as a png
+        plt_by_service = GraphGenerator.graph_individual(response_by_account[acct]['Service'],
+                                                         "%s Costs This Month By Service" % self.nums_to_aliases[acct]
+                                                         , self.start_date, self.end_date)
+
+        plt_by_service[0].savefig("/tmp/%s/%s_by_service.png" % (recipient, acct),
+                                  bbox_extra_artists=(plt_by_service[1],),
+                                  bbox_inches='tight', dpi=200)
+        plt_by_service[0].close()
 
     def send_individual_report(self, user, recipients=None, clean=True):
         """
@@ -419,11 +431,7 @@ class ReportGenerator:
         # Create graphics.
         for acct in response_by_account:
             if user in response_by_account[acct]:  # create graphical reports
-
-                plt = GraphGenerator.graph_individual(response_by_account[acct][user], "%s's %s Costs This Month"
-                                                      % (user, self.nums_to_aliases[acct]))
-                plt[0].savefig("/tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
-                plt[0].close()
+                self.create_individual_graphics(response_by_account, user, acct)
 
         report = self.create_report_body(user, response_by_account)
 
@@ -432,6 +440,12 @@ class ReportGenerator:
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
+
+    def create_individual_graphics(self, response_by_account, user, acct):
+        plt = GraphGenerator.graph_individual(response_by_account[acct][user], "%s's %s Costs This Month"
+                                              % (user, self.nums_to_aliases[acct]))
+        plt[0].savefig("/tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
+        plt[0].close()
 
     @staticmethod
     def sum_dictionary(acct_dic):
@@ -454,7 +468,7 @@ class ReportGenerator:
         :param recipient: the email address to send to
         :param email_body: a string containing the entire email message
         """
-        sender = "FAKE EMAIL"
+        sender = "esoth@ucsc.edu"
 
         msg = MIMEMultipart()  # set up the email
         msg['Subject'] = 'Your AWS Expenses - from {} - {}'.format(self.start_date, self.end_date)
@@ -471,7 +485,7 @@ class ReportGenerator:
 
         s = smtplib.SMTP('smtp.gmail.com', 587)
         s.starttls()
-        s.login(sender, "FAKE PASSWORD")
+        s.login(sender, "@ppleblOss0m")
 
         text = msg.as_string()
 

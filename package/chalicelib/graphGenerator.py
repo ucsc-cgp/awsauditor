@@ -64,7 +64,7 @@ class GraphGenerator:
         return renamed
 
     @staticmethod
-    def list_data(data, name, total=False):
+    def list_data(data, name, start_date, end_date, total=False):
         """
         Convert a dictionary that maps names to their daily costs into a tuple of two lists representing x and y values
 
@@ -74,20 +74,21 @@ class GraphGenerator:
         :return: tuple in the format ([1, 2, 3, ...], [day 1 cost, day 2 cost, day 3 cost, ...])
                  for the given person
         """
-        now = datetime.datetime.now()
-        start_date = datetime.datetime.strptime(now.strftime("%Y-%m-01"), "%Y-%m-%d")
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d")
         day = datetime.timedelta(days=1)
         xvals = []
         yvals = []
 
         if total:
-            for i in range(1, now.day):
-                xvals.append(i)
-                if i in data[name]:
+            for i in range(end_date.day - start_date.day + 1):
+                xvals.append(i + 1)
+                current_date = (start_date + day * i).strftime("%Y-%m-%d")
+                if current_date in data[name]:
                     if len(yvals) == 0:
-                        yvals.append(data[name][i])
+                        yvals.append(data[name][current_date])
                     else:
-                        yvals.append(data[name][i] + yvals[-1])
+                        yvals.append(data[name][current_date] + yvals[-1])
                 else:
                     if len(yvals) == 0:
                         yvals.append(0)
@@ -95,13 +96,14 @@ class GraphGenerator:
                         yvals.append(yvals[-1])
 
         else:
-            for i in range(1, now.day):
-                xvals.append(i)
-                current_date = (start_date + day * (i - 1)).strftime("%Y-%m-%d")
+            for i in range(end_date.day - start_date.day + 1):
+                xvals.append(i + 1)
+                current_date = (start_date + day * i).strftime("%Y-%m-%d")
                 if current_date in data[name]:
                     yvals.append(data[name][current_date])
                 else:
                     yvals.append(0)
+
         return xvals, yvals
 
     @staticmethod
@@ -152,7 +154,7 @@ class GraphGenerator:
         return dic2_copy
 
     @staticmethod
-    def graph_bar(data, title, total=False, first=None):
+    def graph_bar(data, title, start_date, end_date, total=False, first=None):
         """
         Display a matplotlib bar graph of data
 
@@ -166,7 +168,6 @@ class GraphGenerator:
         plt.figure(figsize=(3, 4))
         axes = plt.axes()
         axes.xaxis.set_major_locator(ticker.MultipleLocator(1))  # set the tick marks to integer values
-        now = datetime.datetime.now()
 
         # label axes
         plt.xlabel("date")
@@ -176,14 +177,10 @@ class GraphGenerator:
         colors = plt.cm.rainbow(np.linspace(0, 1, len(data)))  # make a unique color for each bar
 
         # keep track of where the top of each stacked bar is after each iteration
-        prev = [0 for i in range(1, now.day)]  # each bar starts with a height of 0
-
-        print(title)
-        #pp = pprint.PrettyPrinter()
-        #pp.pprint(data)
+        prev = [0 for i in range(int(start_date[-2:]), int(end_date[-2:]))]  # each bar starts with a height of 0
 
         if first:  # if specified, graph this person's data first so it all appears at the bottom and is easier to read
-            result = GraphGenerator.list_data(data, first, total=total)
+            result = GraphGenerator.list_data(data, first, start_date, end_date, total=total)
             plt.bar(result[0], result[1], bottom=prev, label=first)
             prev = [result[1][i] for i in range(len(prev))]
 
@@ -193,7 +190,7 @@ class GraphGenerator:
                 if first:
                     if name == first:
                         continue  # if the first person to graph was specified, don't graph their data again
-                result = GraphGenerator.list_data(data, name, total=total)
+                result = GraphGenerator.list_data(data, name, start_date, end_date, total=total)
 
                 plt.bar(result[0], result[1], bottom=prev, label=name, color=colors[counter])
 
@@ -253,7 +250,7 @@ class GraphGenerator:
         return plot
 
     @staticmethod
-    def graph_individual(data, title):
+    def graph_individual(data, title, start_date, end_date):
         """
         Make a pyplot stacked bar graph of a specific person's costs split up by service
 
@@ -262,7 +259,7 @@ class GraphGenerator:
         :param str title: title to display above the graph
         :return: matplotlib plot
         """
-        plot = GraphGenerator.graph_bar(data, title)
+        plot = GraphGenerator.graph_bar(data, title, start_date, end_date)
         return plot
 
     @staticmethod
