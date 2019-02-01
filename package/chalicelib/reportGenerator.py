@@ -6,7 +6,7 @@ from email.mime.image import MIMEImage
 import smtplib
 import datetime
 import os
-from chalicelib.graphGenerator import GraphGenerator
+from graphGenerator import GraphGenerator
 
 
 class ReportGenerator:
@@ -139,7 +139,7 @@ class ReportGenerator:
         response = self.client.get_cost_and_usage(
             Filter=self.determine_filters(users, account_nums),
             Granularity=self.granularity,
-            GroupBy=determine_groups(group_by),
+            GroupBy=self.determine_groups(group_by),
             Metrics=self.metrics,
             TimePeriod={'End': self.increment_date(self.end_date),  # Cost Explorer API's query has an exclusive upper bound.
                         'Start': self.start_date}

@@ -1,4 +1,4 @@
-from chalicelib.reportGenerator import ReportGenerator
+from reportGenerator import ReportGenerator
 
 
 def main():
@@ -6,7 +6,7 @@ def main():
     # TODO typo in bd2k-prodution
     users = ['user1@email.com', 'email2@email.com' ]
     start = '2019-01-01'
-    end = '2019-01-02'  # Date is inclusive.
+    end = '2019-01-15'  # Date is inclusive.
 
     managers = {
         'esoth@ucsc.edu': ['Toil Dev', 'BD2K-Prodution'], #for cricket

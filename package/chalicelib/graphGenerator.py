@@ -165,7 +165,7 @@ class GraphGenerator:
         :return: matplotlib plot
         """
         # plt.style.use("~/.matplotlib/elip12.mplstyle")  # style definition
-        plt.figure(figsize=(3, 4))
+        plt.figure(figsize=(5, 5))
         axes = plt.axes()
         axes.xaxis.set_major_locator(ticker.MultipleLocator(1))  # set the tick marks to integer values
 
@@ -177,7 +177,7 @@ class GraphGenerator:
         colors = plt.cm.rainbow(np.linspace(0, 1, len(data)))  # make a unique color for each bar
 
         # keep track of where the top of each stacked bar is after each iteration
-        prev = [0 for i in range(int(start_date[-2:]), int(end_date[-2:]))]  # each bar starts with a height of 0
+        prev = [0 for i in range(int(start_date[-2:]), int(end_date[-2:]) + 1)]  # each bar starts with a height of 0
 
         if first:  # if specified, graph this person's data first so it all appears at the bottom and is easier to read
             result = GraphGenerator.list_data(data, first, start_date, end_date, total=total)
@@ -191,7 +191,7 @@ class GraphGenerator:
                     if name == first:
                         continue  # if the first person to graph was specified, don't graph their data again
                 result = GraphGenerator.list_data(data, name, start_date, end_date, total=total)
-
+                print(result[0], result[1], prev)
                 plt.bar(result[0], result[1], bottom=prev, label=name, color=colors[counter])
 
                 # update the value of the height of each stacked bar
