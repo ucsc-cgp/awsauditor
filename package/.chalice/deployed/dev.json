@@ -6,15 +6,9 @@
       "lambda_arn": "arn:aws:lambda:us-west-2:862902209576:function:package-dev-lambda_handler"
     },
     {
-      "name": "api_handler",
-      "resource_type": "lambda_function",
-      "lambda_arn": "arn:aws:lambda:us-west-2:862902209576:function:package-dev"
-    },
-    {
-      "name": "rest_api",
-      "resource_type": "rest_api",
-      "rest_api_id": "k7q0842k22",
-      "rest_api_url": "https://k7q0842k22.execute-api.us-west-2.amazonaws.com/api/"
+      "name": "lambda_handler-event",
+      "resource_type": "cloudwatch_event",
+      "rule_name": "package-dev-lambda_handler-event"
     }
   ],
   "schema_version": "2.0",
