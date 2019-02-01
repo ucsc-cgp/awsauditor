@@ -3,8 +3,16 @@ from awsauditor.reportGenerator import ReportGenerator
 
 
 class ReportGeneratorTest(unittest.TestCase):
-    def setUp(self):
-        self.sample_response = {'GroupDefinitions': None, 'ResponseMetadata': None,
+
+    @classmethod
+    def setUpClass(cls):
+
+        cls.start_date = '2019-01-01'  # TODO Make these the first of the month and today.
+        cls.end_date = '2019-01-25'
+        cls.username = 'fake_user'
+        cls.rg = ReportGenerator(cls.start_date, cls.end_date)
+
+        cls.sample_response = {'GroupDefinitions': None, 'ResponseMetadata': None,
                                 'ResultsByTime': [
                                      {'TimePeriod': {'Start': '2019-01-01', 'End': '2019-01-02'},
                                       'Total': dict(),
@@ -44,11 +52,46 @@ class ReportGeneratorTest(unittest.TestCase):
 
         self.assertEqual(expected_results, results)
 
-    def testCreateReportBody(self):
-        pass
+    def testCreateReportBodyNoExpenditures(self):
+        """Ensure that an account with no expenditures is treated as such in ReportGenerator.create_report_body()."""
+        unused_acct = {'1234': {'Total': 0.0}}
 
-    def testCreateManagementReportBody(self):
-        pass
+        expected_report = 'Report for {}\n\n\n\tNo expenditures from {} to {}\n\n'.format(self.username, self.start_date, self.end_date)
+        generated_report = self.rg.create_report_body(self.username, unused_acct)
+
+        self.assertEqual(expected_report, generated_report)
+
+    def testCreateReportBody(self):
+        """Ensure that the report body is generated appropriately in ReportGeneratro.create_report_body()."""
+        arbitrary_acct_num, arbitrary_acct_name = next(iter(self.rg.nums_to_aliases.items()))
+        acct_expenditures = {'1234': {'Total': 0.0},
+                             arbitrary_acct_num: {self.username: {'EC2': {'Total': 56.78}, 'Total': 56.78}, 'Total': 56.78}}
+
+        expected_report = 'Report for {}\n\n\t\t{}\n\t\t\t{:40} ${:.2f}\n'.format(self.username, arbitrary_acct_name, 'EC2', 56.78)
+        expected_report += '\t\t\t' + '-' * 47 + '\n'
+        expected_report += '\t\t\t{:40} ${:.2f}\n\n'.format('Total', 56.78)
+        expected_report += '\t\tExpenditures from {} to {}:  {}\n\n'.format(self.start_date, self.end_date, '$' + str(56.78))
+
+        report = self.rg.create_report_body(self.username, acct_expenditures)
+
+        self.assertNotIn('1234', report)
+        self.assertEqual(expected_report, report)
+
+    def testCreateManagementReportBodyNoExpenditures(self):
+        """Tests ReportGenerator.create_management_report() effectively catches unused accounts."""
+
+        acct_expenditures = dict()
+        for acct_num in self.rg.nums_to_aliases:
+            acct_expenditures.update({acct_num: {'Total': 0.0}})
+
+        report = self.rg.create_management_report_body(acct_expenditures)
+
+        # The accounts order of appearance is dictated by the order in which they are taken from the dict in
+        # ReportGenerator.create_management_report_body. Consequently, we have to check that each account shows up
+        # appropriately in the report.
+        for acct_name in self.rg.nums_to_aliases.values():
+            acct_report = '\t\t{}\n\t\t\tNo Activity from {} - {}\n\n'.format(acct_name, self.start_date, self.end_date)
+            self.assertIn(acct_report, report)
 
     def testIncrementDate(self):
         """Make sure that incrementing the date works."""
