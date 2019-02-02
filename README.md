@@ -30,3 +30,5 @@ On line 530, edit to include your password:
 
 To set who receives emails, edit chalicelib/awsAuditor.py, which contains a dictionary called `managers` and a list called `individuals`.
 The dictionary maps email addresses to lists of account names. People who have emails in this dictionary will get a report for each account mapped to them. The list contains email addresses for which to send individual reports. People who have emails in this list will get a report showing only their expenses.
+
+To add or remove a person from the email list, just edit the dictionary and list accordingly. No changes are required to include a new person in the management reports. They will automatically show up in the API response.
