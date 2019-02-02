@@ -230,7 +230,7 @@ class ReportGenerator:
         for acct_num, acct_data in response_by_account.items():
             report += '\t\t{}\n'.format(self.nums_to_aliases[acct_num])
 
-            # If money was spent create a report otherwise indicate no activity.
+            # If money was spent on this account, detail its expenditures otherwise indicate no activity.
             if acct_data['Total']:
 
                 # Print total spent for each user
@@ -251,7 +251,7 @@ class ReportGenerator:
                 report += '\t\t\tNo Activity from {} - {}\n\n'.format(self.start_date, self.end_date)
 
         if all_accts_total:
-            report += '\t\t{:30} ${}'.format('Total for all accounts:', round(all_accts_total,2))
+            report += '\t\t{:30} ${:.2f}'.format('Total for all accounts:', all_accts_total)
 
         return report
 
