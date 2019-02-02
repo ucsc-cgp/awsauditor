@@ -66,7 +66,7 @@ class ReportGeneratorTest(unittest.TestCase):
         self.assertEqual(expected_report, generated_report)
 
     def testCreateReportBody(self):
-        """Ensure that the report body is generated appropriately in ReportGeneratro.create_report_body()."""
+        """Ensure that the report body is generated appropriately in ReportGenerator.create_report_body()."""
         arbitrary_acct_num, arbitrary_acct_name = next(iter(self.rg.nums_to_aliases.items()))
         acct_expenditures = {'9999': {'Total': 0.0},
                              arbitrary_acct_num: {self.username: {'EC2': {'Total': 56.78}, 'Total': 56.78}, 'Total': 56.78}}
