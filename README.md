@@ -23,6 +23,7 @@ To configure awsauditor to send emails, edit chalicelib/reportGenerator.py to in
 On line 513, edit to include your email address:
 
 `sender = "you@email.com"`
+
 On line 530, edit to include your password:
 
 `s.login(sender, "y0urp@ssword")`
