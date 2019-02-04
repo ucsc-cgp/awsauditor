@@ -9,7 +9,9 @@ import shutil
 
 
 class GraphGenerator:
-
+    """
+    A tool for creating graphs from data generated in a ReportGenerator object.
+    """
     def __init__(self):
         pass
 
@@ -156,7 +158,7 @@ class GraphGenerator:
     @staticmethod
     def graph_bar(data, title, start_date, end_date, total=False, first=None):
         """
-        Display a matplotlib bar graph of data
+        Display a matplotlib bar graph of data.
 
         :param dict data: dictionary mapping names to lists of their daily costs
         :param str title: title to display above the graph
@@ -242,8 +244,6 @@ class GraphGenerator:
 
         :param dict data: data in dictionary form
         :param str title: title to display above the graph
-        :param str name: if specified, plot this person's data first, so it's easier for them to read
-        :return: matplotlib plot
         """
         data = GraphGenerator.rename_data(data)
         plot = GraphGenerator.graph_bar(data, title, first=name)
@@ -252,7 +252,7 @@ class GraphGenerator:
     @staticmethod
     def graph_individual(data, title, start_date, end_date):
         """
-        Make a pyplot stacked bar graph of a specific person's costs split up by service
+        Make a pyplot stacked bar graph of a specific person's costs split up by service.
 
         :param str name: the name to use
         :param dict data: data in dictionary form
@@ -265,5 +265,6 @@ class GraphGenerator:
     @staticmethod
     def clean():
         """Erase everything in the images directory"""
+
         if os.path.exists("images"):
             shutil.rmtree("images")

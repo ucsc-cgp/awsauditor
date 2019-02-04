@@ -13,13 +13,18 @@ class ReportGenerator:
     """
     A tool for creating reports based off of AWS Cost Explorer API responses.
 
+    Note that each Cost Explorer API request costs $0.01
+    See the following for more information: https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/ce-what-is.html
+
     See the following link for more information about the response and request syntax and options:
     https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
     """
 
-    def __init__(self, start_date, end_date, accounts=None, granularity='DAILY', metrics=None):
+    def __init__(self, start_date, end_date, granularity='DAILY', metrics=None):
         """
         Create boto3.client and dictionaries that will be used in later functions.
+
+        Note that your results will be restricted by your boto3 permissions.
 
         :param str start_date: The first date of the inquiry. (inclusive)
         :param str end_date: The last date of the inquiry. (exclusive)
@@ -34,8 +39,8 @@ class ReportGenerator:
         self.metrics = metrics or ['BlendedCost']
         self.client = boto3.client('ce', region_name='us-east-1')  # Region needs to be specified; Cost Explorer hosted here.
 
-        self.nums_to_aliases = self.build_nums_to_aliases(accounts)
-        self.account_nums = [num for num in self.nums_to_aliases]
+        self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases_dicts()
+        self.account_nums = list(self.nums_to_aliases.keys())
         self.nums_to_aliases["Total"] = "Total"
 
     @staticmethod
@@ -43,6 +48,7 @@ class ReportGenerator:
         """
         Determine the date after a given date
 
+        :raises ValueError: When an invalid date is given.
         :param str date: A string representation of a date in the YYYY-MM-DD format.
         :returns: A string representation of a date in the YYYY-MM-DD format.
         """
@@ -58,35 +64,34 @@ class ReportGenerator:
         return str(next_day).split(' ')[0]  # return just the date component of the datetime.datetime object.
 
     @staticmethod
-    def build_nums_to_aliases(aliases=None):
+    def build_nums_to_aliases_dicts():
         """
-        Create a dictionary that pairs account numbers with their aliases.
+        Create two dictionaries that pair account numbers with their aliases and vice versa.
 
-        :param aliases: A list of account aliases.
-        :return dict: A dictionary that pairs account numbers with their aliases.
+        Note that your results will be restricted by your boto3 permissions.
+
+        :return tuple(dict): A tuple of dictionaries that pairs account numbers with their aliases and vice versa.
         """
-
         client = boto3.client('organizations')
         response = client.list_accounts()
 
-        if aliases:
-            nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts'] if account['Name'] in aliases}
-        else:
-            nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts']}
-        return nums_to_aliases
+        nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts']}
+        aliases_to_nums = {account['Name']: account['Id'] for account in response['Accounts']}
+
+        return nums_to_aliases, aliases_to_nums
 
     def determine_filters(self, users=None, account_nums=None):
         """
         A helper function for determining the proper filter for the AWS Cost Explorer API call.
 
-        By default this will return a filter for each user associated with all of the accounts in self.acounts.
+        By default this will return a filter for each user associated with all of the accounts in self.accounts.
         A list of users and accounts can be specified to narrow your search results.
 
         :param list(str) users: A list of users' email addresses.
-        :param list(str) account_nums: A list of the account numbers of interest.
+        :param list(str) account_nums: A list of the account numbers of interest. If unspecified will default to
+                                       self.account_nums (all accounts in the organization.)
         :return dict: The proper filter to be used in the API call.
         """
-
         users_filter = {'And': [{'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': account_nums or self.account_nums}},
                                 {'Tags': {'Key': 'Owner', 'Values': users}}]}
         no_users_filter = {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': account_nums or self.account_nums}}
@@ -274,10 +279,11 @@ class ReportGenerator:
 
         The management report will detail how much was spent on each account and by who.
 
-        :param response_by_account: A dictionary containing expenditure data organized by account.
+        :param dict response_by_account: A dictionary containing expenditure data organized by account.
         :return str report: A string containing the report.
         """
-        report = '\nReport for ' + ', '.join(self.nums_to_aliases.values()) + '\n'
+        all_accts_total = 0.0
+        report = '\nReport for ' + ', '.join([self.nums_to_aliases[acct_num] for acct_num in response_by_account.keys()]) + '\n'
         report += '\tExpenditures from {} - {}\n\n'.format(self.start_date, self.end_date)
 
         for acct_num, acct_data in response_by_account.items():
@@ -291,6 +297,7 @@ class ReportGenerator:
                     if user != 'Total':  # The total across all users is stored alongside them and should be ignored.
 
                         total = expenditures['Total']
+                        all_accts_total += total
                         if total >= 0.01:
                             report += '\t\t\t{:26} ${:.2f}\n'.format(user, total)
                         else:
@@ -302,14 +309,17 @@ class ReportGenerator:
             else:
                 report += '\t\t\tNo Activity from {} - {}\n\n'.format(self.start_date, self.end_date)
 
+        if all_accts_total:
+            report += '\t\t{:30} ${}'.format('Total for all accounts:', round(all_accts_total,2))
+
         return report
 
     def create_report_body(self, user, response_by_account):
         """
         Create a string version of a report detailing the expenditures of a user.
 
-        :param user: The email address of the user receiving the report.
-        :param response_by_account: A dictionary containing expenditure data organized by account.
+        :param str user: The email address of the user receiving the report.
+        :param dict response_by_account: A dictionary containing expenditure data organized by account.
         :return str report: A string containing the report.
         """
         spent_money = sum([a['Total'] for a in response_by_account.values()])
@@ -343,11 +353,12 @@ class ReportGenerator:
 
         return report
 
-    def send_management_report(self, recipient, clean=True):
+    def send_management_report(self, recipient, accounts=None, clean=True):
         """
         Email a report, tailored to managers, to a list of recipients.
 
         :param list(str) recipients: The recipients of the email. Defaults to the value of users.
+        :param list(str) accounts: The account aliases of interest.
         """
         if not os.path.exists("/tmp/"): # create directory to store graphs in
             os.mkdir("/tmp/")
@@ -357,8 +368,16 @@ class ReportGenerator:
 
         response_by_account = dict()
 
+        if accounts:
+            accounts = [self.aliases_to_nums[alias] for alias in accounts]
+        else:
+            accounts = self.account_nums
+
         # Determine expenditures across all accounts.
-        for acct_num in self.account_nums:
+        for acct_num in accounts:
+            response = self.api_call(account_nums=[acct_num])
+            processed = self.process_api_response(response)
+            response_by_account[acct_num] = processed
 
             response_by_account[acct_num] = {}
             for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
@@ -401,14 +420,20 @@ class ReportGenerator:
                                   bbox_inches='tight', dpi=200)
         plt_by_service[0].close()
 
-    def send_individual_report(self, user, recipients=None, clean=True):
+    def send_individual_report(self, user, recipients=None, accounts=None, clean=True):
         """
         Email a report detailing the expenditures of a given user.
 
         :param str user: The email address of the user who the report is about.
         :param list(str) recipients: The recipient of the email. If not specified, will default to user.
         :param bool clean: If true, delete the image directory at the end.
+        :param list(str) accounts: The account aliases of interest. If not specified it will default to self.account_nums
+                                   (all accounts under the organization).
         """
+        if accounts:
+            accounts = [self.aliases_to_nums[alias] for alias in accounts]
+        else:
+            accounts = self.account_nums
 
         if not os.path.exists("/tmp/"):
             os.mkdir("/tmp/")
@@ -420,7 +445,7 @@ class ReportGenerator:
 
         # Determine expenditures for the user across all accounts.
         response_by_account = dict()
-        for acct_num in self.account_nums:
+        for acct_num in accounts:
             response = self.api_call([user], [acct_num])
             processed = self.process_api_response(response)
             response_by_account[acct_num] = processed
@@ -465,8 +490,12 @@ class ReportGenerator:
         """
         Send the report to a recipient.
 
-        :param recipient: the email address to send to
-        :param email_body: a string containing the entire email message
+        Unfortunately, at this time you must hard-code your own email address and password into the source code
+        to enable this functionality. It might be necessary to enable third-party access to your email account. If
+        you are using a gmail account you will be prompted to allow this after your first attempted use.
+
+        :param str recipient: the email address to send to
+        :param str email_body: a string containing the entire email message
         """
         sender = "esoth@ucsc.edu"
 

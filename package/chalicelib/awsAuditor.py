@@ -1,32 +1,28 @@
-from reportGenerator import ReportGenerator
-
+from chalicelib.reportGenerator import ReportGenerator
 
 def main():
-    # TODO Grab these from a commandline?
-    # TODO typo in bd2k-prodution
-    users = ['user1@email.com', 'email2@email.com' ]
-    start = '2019-01-01'
-    end = '2019-01-15'  # Date is inclusive.
+    start = str(datetime.date.today().replace(day=1))
+    end = str(datetime.date.today())
 
-    managers = {
-        'esoth@ucsc.edu': ['Toil Dev', 'BD2K-Prodution'], #for cricket
-        #'esoth@ucsc.edu': ['platform-hca', 'anvil-dev'],
-        #'esoth@ucsc.edu': 'all',
-        #'esoth@ucsc.edu': 'all',
-        #'esoth@ucsc.edu': ['nanopore-dev'],
-        #'esoth@ucsc.edu': ['comparative-genomics-dev'],
-    }
-    #individuals = ['anovak@soe.ucsc.edu', 'lblauvel@ucsc.edu', 'mbaumann@ucsc.edu', 'mkrause1@ucsc.edu', david, charles,
+    manager_accounts = {'casloan@ucsc.edu': ['Toil Dev', 'platform-dev', 'ucsc-cgp-production'],
+                        'kosborn2@ucsc.edu': ['platform-hca admin', 'anvil-dev'],
+                        'miten@soe.ucsc.edu': ['nanopore-dev'],
+                        'markd@ucsc.edu': ['comparative-genomics-dev'],
+                        'bpaten@ucsc.edu': [],  # When an RG function recieves an empty list it will default to all accounts.
+                        'theathor@ucsc.edu': []}
 
-    for person in managers:
-        if managers[person] == 'all':
-            r = ReportGenerator(start, end)
-        else:
-            r = ReportGenerator(start, end, accounts=managers[person])
+    users = ['lblauvel@ucsc.edu', 'mbaumann@ucsc.edu', 'mkrause1@ucsc.edu', 'anovak@soe.ucsc.edu',
+             'glenn.hickey@gmail.com', 'jltsiren@gmail.com', 'jmonlong@ucsc.edu', 'joeizeng@gmail.com',
+             'daheller@ucsc.edu', 'davidcs@ucsc.edu', 'coverbec@ucsc.edu', 'jshands@ucsc.edu', 'jrbrenna@ucsc.edu',
+             'gpelayo1@ucsc.edu']
 
-        #r.send_individual_report('mbaumann@ucsc.edu', recipients=['esoth@ucsc.edu'])
-        r.send_management_report(person)
+    r = ReportGenerator(start_date=start, end_date=end)
 
+    # Send account management reports
+    for manager, accounts in manager_accounts.items():
+        r.send_management_report(manager_accounts[manager], accounts)
 
-if __name__ == '__main__':
-    main()
+    # Send individual reports
+    for user in users:
+        r.send_individual_report(user, recipients=['bvandebr@ucsc.edu'])
+
