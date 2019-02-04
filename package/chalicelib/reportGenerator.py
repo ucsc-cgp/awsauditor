@@ -495,7 +495,7 @@ class ReportGenerator:
         :param str email_body: a string containing the entire email message
         """
 
-        sender = "esoth@ucsc.edu"
+        sender = "FAKE EMAIL"
 
         msg = MIMEMultipart()  # set up the email
         msg['Subject'] = 'Your AWS Expenses - from {} - {}'.format(self.start_date, self.end_date)
@@ -512,7 +512,7 @@ class ReportGenerator:
 
         s = smtplib.SMTP('smtp.gmail.com', 587)
         s.starttls()
-        s.login(sender, "@ppleblOss0m")
+        s.login(sender, "FAKE PASSWORD")
 
         text = msg.as_string()
 

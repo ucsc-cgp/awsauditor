@@ -18,3 +18,15 @@ From within the package directory, create the lambda:
 
 `chalice deploy`
 
+## Configuration
+To configure awsauditor to send emails, edit reportGenerator.py to include your email and password.
+On line 513, edit to include your email address:
+
+`sender = "you@email.com"`
+On line 530, edit to include your password:
+
+`s.login(sender, "y0urp@ssword")`
+
+To set who receives emails, edit awsAuditor.py, which contains a dictionary called `managers` and a list called `individuals`.
+The dictionary maps email addresses to lists of account names: 
+
