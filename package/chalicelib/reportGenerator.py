@@ -41,7 +41,6 @@ class ReportGenerator:
 
         self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases_dicts()
         self.account_nums = list(self.nums_to_aliases.keys())
-        self.nums_to_aliases["Total"] = "Total"
 
     @staticmethod
     def increment_date(date):
@@ -77,6 +76,8 @@ class ReportGenerator:
 
         nums_to_aliases = {account['Id']: account['Name'] for account in response['Accounts']}
         aliases_to_nums = {account['Name']: account['Id'] for account in response['Accounts']}
+        nums_to_aliases["Total"] = "Total"  # This is for easily creating a title for the total graph of all accounts in
+                                            # ReportGenerator.create_individual_graphics.
 
         return nums_to_aliases, aliases_to_nums
 
@@ -148,7 +149,7 @@ class ReportGenerator:
         return response
 
     @staticmethod
-    def process_two_level_api_response(response):
+    def process_api_response_for_individual(response):
         """
         Turns the response from the AWS Cost Explorer API into more accessible data.
 
@@ -230,7 +231,7 @@ class ReportGenerator:
         return processed
 
     @staticmethod
-    def process_one_level_api_response(response):
+    def process_api_response_for_managers(response):
         """
         Turns the response from the AWS Cost Explorer API into more accessible data.
 
@@ -466,7 +467,7 @@ class ReportGenerator:
             response_by_account[acct_num] = {}
             for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
                 response = self.api_call(account_nums=[acct_num], group_by=category)
-                processed = self.process_one_level_api_response(response)
+                processed = self.process_api_response_for_managers(response)
                 response_by_account[acct_num][category] = processed
 
         # Create graphics.
@@ -505,7 +506,7 @@ class ReportGenerator:
         response_by_account = dict()
         for acct_num in accounts:
             response = self.api_call([user], [acct_num])
-            processed = self.process_two_level_api_response(response)
+            processed = self.process_api_response_for_individual(response)
             response_by_account[acct_num] = processed
 
         if user == "":
@@ -520,7 +521,7 @@ class ReportGenerator:
             os.mkdir("/tmp/%s" % user)
 
         # Create graphics.
-        for acct in response_by_account:
+        for acct in response_by_account:  # one of these is "Total" not an account number
             if user in response_by_account[acct]:  # create graphical reports
                 self.create_individual_graphics(response_by_account, user, acct)
 
