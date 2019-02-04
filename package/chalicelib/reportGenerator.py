@@ -98,33 +98,25 @@ class ReportGenerator:
 
         return users_filter if users else no_users_filter
 
-    def determine_groups(self, group_by=None):
-        if group_by == "Owner":
-            group_list = [
-                {
-                    'Type': 'TAG',
-                    'Key': 'Owner'
-                }]
-        elif group_by == "Service":
-            group_list = [
-                {
-                    'Type': 'DIMENSION',
-                    'Key': 'SERVICE'
-                }
-            ]
-        else:
-            group_list = [  # The order of the elements of this list matters for ReportGenerator.process_api_response.
-                            # Owner & service must be at indices 0 & 1, respectively.
-                {
-                    'Type': 'TAG',
-                    'Key': 'Owner'
-                },
-                {
-                    'Type': 'DIMENSION',
-                    'Key': 'SERVICE'
-                }
+    @staticmethod
+    def determine_groups(group_by=None):
+        """
+        Return an appropriate GroupBy parameter for use in an API call. By default, will return a parameter that groups
+        by both owner and service. Otherwise, specify one or the other.
 
-            ]
+        :param str group_by: "Owner" or "Service" or None
+        :return dict group_list: A GroupBy parameter formatted to use in a CostExplorer API call
+        """
+        if group_by == "Owner":
+            group_list = [{'Type': 'TAG', 'Key': 'Owner'}]
+
+        elif group_by == "Service":
+            group_list = [{'Type': 'DIMENSION', 'Key': 'SERVICE'}]
+
+        else:  # The order of the elements of this list matters for ReportGenerator.process_api_response.
+            # Owner & service must be at indices 0 & 1, respectively.
+            group_list = [{'Type': 'TAG', 'Key': 'Owner'}, {'Type': 'DIMENSION', 'Key': 'SERVICE'}]
+
         return group_list
 
     def api_call(self, users=None, account_nums=None, group_by=None):
@@ -138,6 +130,8 @@ class ReportGenerator:
                                 for everyone from the accounts specified in self.accounts.
         :param list(str) account_nums: A list of the account numbers of interest. If unspecified the response will contain
                                     data for all of the accounts specified in self.accounts.
+        :param str group_by: If specified as "Owner" or "Service", groups API response by this category. By default,
+                            groups by both.
         :return dict response: The response from the AWS Cost Explorer API. See  for more information.
         """
 
@@ -290,10 +284,10 @@ class ReportGenerator:
             report += '\t\t{}\n'.format(self.nums_to_aliases[acct_num])
 
             # If money was spent create a report otherwise indicate no activity.
-            if acct_data['Total']:
+            if acct_data['Owner']['Total']:
 
                 # Print total spent for each user
-                for user, expenditures in acct_data.items():
+                for user, expenditures in acct_data['Owner'].items():
                     if user != 'Total':  # The total across all users is stored alongside them and should be ignored.
 
                         total = expenditures['Total']
@@ -304,7 +298,7 @@ class ReportGenerator:
                             report += '\t\t\t{:26} <$0.01\n'.format(user)
 
                 report += '\t\t\t' + '-' * 34 + '\n'
-                report += '\t\t\t{:26} ${:.2f}\n\n'.format('Total', acct_data['Total'])
+                report += '\t\t\t{:26} ${:.2f}\n\n'.format('Total', acct_data['Owner']['Total'])
 
             else:
                 report += '\t\t\tNo Activity from {} - {}\n\n'.format(self.start_date, self.end_date)
@@ -322,7 +316,7 @@ class ReportGenerator:
         :param dict response_by_account: A dictionary containing expenditure data organized by account.
         :return str report: A string containing the report.
         """
-        spent_money = sum([a['Total'] for a in response_by_account.values()])
+        spent_money = response_by_account["Total"]["Total"]
         report = 'Report for {}\n\n'.format(user)
 
         if spent_money:
@@ -330,8 +324,8 @@ class ReportGenerator:
             # For each account on which money was spent, create a breakdown of expenditures.
             for acct_num, data in response_by_account.items():
 
-                # Only print information for accounts on which money was spent.
-                if data['Total']:
+                # Only print information for accounts on which money was spent, and don't print the total breakdown.
+                if data['Total'] and acct_num != "Total":
                     report += '\t\t{}\n'.format(self.nums_to_aliases[acct_num])
 
                     # Breakdown by services used.
@@ -353,7 +347,7 @@ class ReportGenerator:
 
         return report
 
-    def send_management_report(self, recipient, accounts=None, clean=True):
+    def send_management_report(self, recipients, accounts=None, clean=True):
         """
         Email a report, tailored to managers, to a list of recipients.
 
@@ -363,8 +357,8 @@ class ReportGenerator:
         if not os.path.exists("/tmp/"): # create directory to store graphs in
             os.mkdir("/tmp/")
 
-        if not os.path.exists("/tmp/%s" % recipient):
-            os.mkdir("/tmp/%s" % recipient)
+        if not os.path.exists("/tmp/%s" % '_'.join(recipients)):
+            os.mkdir("/tmp/%s" % '_'.join(recipients))
 
         response_by_account = dict()
 
@@ -387,7 +381,7 @@ class ReportGenerator:
 
         # Create graphics.
         for acct in response_by_account:
-            self.create_account_graphics(response_by_account, recipient, acct)
+            self.create_account_graphics(response_by_account, '_'.join(recipients), acct)
 
             # Add in the total field for purposes of making the text report
             response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'], response_by_account[acct]['Owner']['Total'])
@@ -395,7 +389,8 @@ class ReportGenerator:
         report = self.create_management_report_body(response_by_account)  # Make the text report
 
         # Send emails.
-        self.send_email(recipient, report, "/tmp/%s" % recipient)
+        for recipient in recipients:
+            self.send_email(recipient, report, "/tmp/%s" % '_'.join(recipients))
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
@@ -435,12 +430,6 @@ class ReportGenerator:
         else:
             accounts = self.account_nums
 
-        if not os.path.exists("/tmp/"):
-            os.mkdir("/tmp/")
-
-        if not os.path.exists("/tmp/%s" % user):  # create directory to store graphs in
-            os.mkdir("/tmp/%s" % user)
-
         recipients = recipients or [user]
 
         # Determine expenditures for the user across all accounts.
@@ -450,8 +439,16 @@ class ReportGenerator:
             processed = self.process_api_response(response)
             response_by_account[acct_num] = processed
 
+        if user == "":
+            user = "Untagged"
+
         total = ReportGenerator.sum_dictionary(response_by_account)
         response_by_account["Total"] = total
+
+        if not os.path.exists("/tmp/"):
+            os.mkdir("/tmp/")
+        if not os.path.exists("/tmp/%s" % user):  # create directory to store graphs in
+            os.mkdir("/tmp/%s" % user)
 
         # Create graphics.
         for acct in response_by_account:
@@ -468,7 +465,7 @@ class ReportGenerator:
 
     def create_individual_graphics(self, response_by_account, user, acct):
         plt = GraphGenerator.graph_individual(response_by_account[acct][user], "%s's %s Costs This Month"
-                                              % (user, self.nums_to_aliases[acct]))
+                                              % (user, self.nums_to_aliases[acct]), self.start_date, self.end_date)
         plt[0].savefig("/tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
         plt[0].close()
 
@@ -497,6 +494,7 @@ class ReportGenerator:
         :param str recipient: the email address to send to
         :param str email_body: a string containing the entire email message
         """
+
         sender = "esoth@ucsc.edu"
 
         msg = MIMEMultipart()  # set up the email
