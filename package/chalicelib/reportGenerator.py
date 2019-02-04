@@ -101,8 +101,9 @@ class ReportGenerator:
     @staticmethod
     def determine_groups(group_by=None):
         """
-        Return an appropriate GroupBy parameter for use in an API call. By default, will return a parameter that groups
-        by both owner and service. Otherwise, specify one or the other.
+        Return an appropriate GroupBy parameter for use in an API call. \
+
+        By default, will return a parameter that groups by both owner and service. Otherwise, specify one or the other.
 
         :param str group_by: "Owner" or "Service" or None
         :return dict group_list: A GroupBy parameter formatted to use in a CostExplorer API call
@@ -147,10 +148,11 @@ class ReportGenerator:
         return response
 
     @staticmethod
-    def process_api_response(response, levels=2):
+    def process_two_level_api_response(response):
         """
-        Turns the response from the AWS Cost Explorer API and turns it into more accessible data.
+        Turns the response from the AWS Cost Explorer API into more accessible data.
 
+        Use this if the api call was made with group_by BOTH service and owner (for individual reports)
         The returned object is a dictionary of dictionaries that associates a service with a dictionary associating
         dates and costs.
 
@@ -184,83 +186,97 @@ class ReportGenerator:
         :returns defaultdict(defaultdict(dict)) processed: Data from the response organized by service:date:cost.
         """
 
+        # Create dict with the structure {owner: {service: {date: cost}}}
+        processed = defaultdict(lambda: defaultdict(dict))
 
         daily_data = response['ResultsByTime']
 
-        # Use this if the api call was made with group_by BOTH service and owner (for individual reports)
-        if levels == 2:  # Create dict with the structure {owner: {service: {date: cost}}}
-            processed = defaultdict(lambda: defaultdict(dict))
+        for day_dict in daily_data:
+            date = day_dict['TimePeriod']['Start']
 
-            for day_dict in daily_data:
-                date = day_dict['TimePeriod']['Start']
+            services_used = day_dict['Groups']
+            for s in services_used:
+                owner = s['Keys'][0].split('$')[1] or 'Untagged'
+                cost = float(s['Metrics']['BlendedCost']['Amount'])
+                if cost >= 0:  # The response contained large negative numbers associated with ''. This rules them out.
+                    service = s['Keys'][1]
 
-                services_used = day_dict['Groups']
-                for s in services_used:
-                    owner = s['Keys'][0].split('$')[1] or 'Untagged'
-                    cost = float(s['Metrics']['BlendedCost']['Amount'])
-                    if cost >= 0:  # The response contained large negative numbers associated with ''. This rules them out.
-                        service = s['Keys'][1]
-
-                        if owner.startswith('i-'):
-                            owner = 'i-*'
-                            if processed.get(owner) and processed.get(owner).get(service) and processed.get(owner).get(service).get(date):
-                                processed[owner][service][date] += cost
-                            else:
-                                processed[owner][service][date] = cost
+                    if owner.startswith('i-'):
+                        owner = 'i-*'
+                        if processed.get(owner) and processed.get(owner).get(service) and processed.get(owner).get(service).get(date):
+                            processed[owner][service][date] += cost
                         else:
                             processed[owner][service][date] = cost
-
-            # Calculate totals for each owner, service and overall.
-            everyone_total = 0.0
-            for owner in processed:
-                owner_total = 0.0
-
-                for service in processed[owner]:
-                    service_total = 0.0
-
-                    for cost in processed[owner][service].values():
-                        service_total += cost
-                        owner_total += cost
-                        everyone_total += cost
-
-                    processed[owner][service]['Total'] = service_total
-                processed[owner]['Total'] = owner_total
-            processed['Total'] = everyone_total
-
-        # Use this if the api call was made with just service OR owner (for management reports)
-        elif levels == 1:  # Create dict with the structure {owner: {date: cost}}
-            processed = defaultdict(lambda: defaultdict())
-
-            for day_dict in daily_data:
-                date = day_dict['TimePeriod']['Start']
-                owners = day_dict['Groups']
-                for o in owners:
-                    if o['Keys'][0].startswith('Owner$'):
-                        owner = o['Keys'][0].split('$')[1] or 'Untagged'
                     else:
-                        owner = o['Keys'][0] or 'Untagged'
+                        processed[owner][service][date] = cost
 
-                    cost = float(o['Metrics']['BlendedCost']['Amount'])
-                    if cost >= 0:
-                        if owner.startswith('i-'):
-                            owner = 'i-*'
-                            if processed.get(owner) and processed.get(owner).get(date):
-                                processed[owner][date] += cost
-                            else:
-                                processed[owner][date] = cost
-                        else:
-                            processed[owner][date] = cost
+        # Calculate totals for each owner, service and overall.
+        everyone_total = 0.0
+        for owner in processed:
+            owner_total = 0.0
 
-            everyone_total = 0.0
-            for owner in processed:
-                owner_total = 0.0
+            for service in processed[owner]:
+                service_total = 0.0
 
-                for cost in processed[owner].values():
+                for cost in processed[owner][service].values():
+                    service_total += cost
                     owner_total += cost
                     everyone_total += cost
 
-                processed[owner]['Total'] = owner_total
-            processed['Total'] = everyone_total
+                processed[owner][service]['Total'] = service_total
+            processed[owner]['Total'] = owner_total
+        processed['Total'] = everyone_total
+
+        return processed
+
+    @staticmethod
+    def process_one_level_api_response(response):
+        """
+        Turns the response from the AWS Cost Explorer API into more accessible data.
+
+        Use this if the api call was made with just service OR owner (for management reports)
+        The returned object is a dictionary of dictionaries that associates a service with a dictionary associating
+        dates and costs.
+
+        :param dict response: The response from the AWS Cost Explorer API.
+        :returns defaultdict(dict) processed: Data from the response organized by service:date:cost.
+        """
+
+        # Create dict with the structure {owner: {date: cost}}
+        processed = defaultdict(lambda: defaultdict())
+
+        daily_data = response['ResultsByTime']
+
+        for day_dict in daily_data:
+            date = day_dict['TimePeriod']['Start']
+            owners = day_dict['Groups']
+            for o in owners:
+                if o['Keys'][0].startswith('Owner$'):
+                    owner = o['Keys'][0].split('$')[1] or 'Untagged'
+                else:
+                    owner = o['Keys'][0] or 'Untagged'
+
+                cost = float(o['Metrics']['BlendedCost']['Amount'])
+                if cost >= 0:
+                    if owner.startswith('i-'):
+                        owner = 'i-*'
+                        if processed.get(owner) and processed.get(owner).get(date):
+                            processed[owner][date] += cost
+                        else:
+                            processed[owner][date] = cost
+                    else:
+                        processed[owner][date] = cost
+
+        everyone_total = 0.0
+        for owner in processed:
+            owner_total = 0.0
+
+            for cost in processed[owner].values():
+                owner_total += cost
+                everyone_total += cost
+
+            processed[owner]['Total'] = owner_total
+        processed['Total'] = everyone_total
 
         return processed
 
