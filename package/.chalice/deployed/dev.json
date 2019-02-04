@@ -1,0 +1,16 @@
+{
+  "resources": [
+    {
+      "name": "lambda_handler",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:us-west-2:862902209576:function:package-dev-lambda_handler"
+    },
+    {
+      "name": "lambda_handler-event",
+      "resource_type": "cloudwatch_event",
+      "rule_name": "package-dev-lambda_handler-event"
+    }
+  ],
+  "schema_version": "2.0",
+  "backend": "api"
+}

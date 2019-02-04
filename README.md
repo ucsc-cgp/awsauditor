@@ -20,7 +20,7 @@ From within the package directory, create the lambda:
 
 ## Configuration
 To configure awsauditor to send emails, edit chalicelib/reportGenerator.py to include your email and password.
-In the function `send_email`, at the very bottom, edit to include your email address:
+In the function `send_email`, edit to include your email address:
 
 `sender = "you@email.com"`
 
@@ -32,3 +32,4 @@ To set who receives emails, edit chalicelib/awsAuditor.py, which contains a dict
 The dictionary maps email addresses to lists of account names. People who have emails in this dictionary will get a report for each account mapped to them. The list contains email addresses for which to send individual reports. People who have emails in this list will get a report showing only their expenses.
 
 To add or remove a person from the email list, just edit the dictionary and list accordingly. No changes are required to include a new person in the management reports. They will automatically show up in the API response.
+
