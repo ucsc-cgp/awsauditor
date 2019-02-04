@@ -120,7 +120,7 @@ class GraphGenerator:
         :return: matplotlib plot
         """
         if dark:
-            plt.style.use(os.path.abspath("elip12.mplstyle"))  # style definition
+            plt.style.use(os.path.abspath(".matplotlib/elip12.mplstyle"))  # style definition
 
         plt.figure(figsize=(5, 5))
         axes = plt.axes()
