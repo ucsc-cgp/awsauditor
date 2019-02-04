@@ -369,7 +369,7 @@ class ReportGenerator:
                     report += '\t\t\t{:40} ${:.2f}\n\n'.format('Total', data['Total'])
 
             # TODO fix this string formatting. Using spaces for alignment is janky.
-            report += '\t\tExpenditures from {} to {}:  {}\n'.format(self.start_date, self.end_date, '$' + str(round(spent_money, 2)))
+            report += '\t\tExpenditures from {} to {}:  ${:.2f}\n'.format(self.start_date, self.end_date, spent_money)
 
         else:
             report += '\n\tNo expenditures from {} to {}\n'.format(self.start_date, self.end_date)
@@ -384,7 +384,7 @@ class ReportGenerator:
                                                        "%s Costs This Month By Owner" % self.nums_to_aliases[acct],
                                                        self.start_date, self.end_date)
 
-        plt_by_owner[0].savefig("/tmp/%s/%s_by_owner.png" % (recipient, acct), bbox_extra_artists=(plt_by_owner[1],),
+        plt_by_owner[0].savefig("tmp/%s/%s_by_owner.png" % (recipient, acct), bbox_extra_artists=(plt_by_owner[1],),
                                 bbox_inches='tight', dpi=200)
         plt_by_owner[0].close()
 
@@ -393,7 +393,7 @@ class ReportGenerator:
                                                          "%s Costs This Month By Service" % self.nums_to_aliases[acct]
                                                          , self.start_date, self.end_date)
 
-        plt_by_service[0].savefig("/tmp/%s/%s_by_service.png" % (recipient, acct),
+        plt_by_service[0].savefig("tmp/%s/%s_by_service.png" % (recipient, acct),
                                   bbox_extra_artists=(plt_by_service[1],),
                                   bbox_inches='tight', dpi=200)
         plt_by_service[0].close()
@@ -401,7 +401,7 @@ class ReportGenerator:
     def create_individual_graphics(self, response_by_account, user, acct):
         plt = GraphGenerator.graph_bar(response_by_account[acct][user], "%s's %s Costs This Month"
                                               % (user, self.nums_to_aliases[acct]), self.start_date, self.end_date)
-        plt[0].savefig("/tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
+        plt[0].savefig("tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
         plt[0].close()
 
     def send_email(self, recipient, email_body, attachments_path=None):
@@ -449,11 +449,12 @@ class ReportGenerator:
         :param list(str) accounts: The account aliases of interest.
         :param bool clean: If true, delete the image directory at the end.
         """
-        if not os.path.exists("/tmp/"):  # create directory to store graphs in
-            os.mkdir("/tmp/")
+        GraphGenerator.clean()
+        if not os.path.exists("tmp/"):  # create directory to store graphs in
+            os.mkdir("tmp/")
 
-        if not os.path.exists("/tmp/%s" % '_'.join(recipients)):
-            os.mkdir("/tmp/%s" % '_'.join(recipients))
+        if not os.path.exists("tmp/%s" % '_'.join(recipients)):
+            os.mkdir("tmp/%s" % '_'.join(recipients))
 
         response_by_account = dict()
 
@@ -480,7 +481,7 @@ class ReportGenerator:
 
         # Send emails.
         for recipient in recipients:
-            self.send_email(recipient, report, "/tmp/%s" % '_'.join(recipients))
+            self.send_email(recipient, report, "tmp/%s" % '_'.join(recipients))
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
@@ -495,6 +496,7 @@ class ReportGenerator:
                                    (all accounts under the organization).
         :param bool clean: If true, delete the image directory at the end.
         """
+        GraphGenerator.clean()
         if accounts:
             accounts = [self.aliases_to_nums[alias] for alias in accounts]
         else:
@@ -515,10 +517,10 @@ class ReportGenerator:
         total = ReportGenerator.sum_dictionary(response_by_account)
         response_by_account["Total"] = total
 
-        if not os.path.exists("/tmp/"):
-            os.mkdir("/tmp/")
-        if not os.path.exists("/tmp/%s" % user):  # create directory to store graphs in
-            os.mkdir("/tmp/%s" % user)
+        if not os.path.exists("tmp/"):
+            os.mkdir("tmp/")
+        if not os.path.exists("tmp/%s" % user):  # create directory to store graphs in
+            os.mkdir("tmp/%s" % user)
 
         # Create graphics.
         for acct in response_by_account:  # one of these is "Total" not an account number
@@ -528,7 +530,7 @@ class ReportGenerator:
         report = self.create_individual_report_body(user, response_by_account)
 
         for recipient in recipients:  # Send emails
-            self.send_email(recipient, report, "/tmp/%s" % user)  # send the text and graphs together in an email
+            self.send_email(recipient, report, "tmp/%s" % user)  # send the text and graphs together in an email
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
