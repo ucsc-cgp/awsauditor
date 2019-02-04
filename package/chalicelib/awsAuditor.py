@@ -3,7 +3,7 @@ from reportGenerator import ReportGenerator
 
 def main():
     start = str(datetime.date.today().replace(day=1))
-    end = str(datetime.date.today())
+    end = str(datetime.date.today().replace(day=1))
 
     manager_accounts = {'casloan@ucsc.edu': ['Toil Dev', 'platform-dev', 'ucsc-cgp-production'],
                         'kosborn2@ucsc.edu': ['platform-hca admin', 'anvil-dev'],

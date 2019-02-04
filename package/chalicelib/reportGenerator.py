@@ -46,7 +46,7 @@ class ReportGenerator:
     @staticmethod
     def increment_date(date):
         """
-        Determine the date after a given date
+        Helper function to determine the date after a given date
 
         :raises ValueError: When an invalid date is given.
         :param str date: A string representation of a date in the YYYY-MM-DD format.
@@ -101,7 +101,7 @@ class ReportGenerator:
     @staticmethod
     def determine_groups(group_by=None):
         """
-        Return an appropriate GroupBy parameter for use in an API call. \
+        A helper function that returns an appropriate GroupBy parameter for use in an API call.
 
         By default, will return a parameter that groups by both owner and service. Otherwise, specify one or the other.
 
@@ -283,6 +283,20 @@ class ReportGenerator:
         # TODO Add an 'Previous' total which the day before's total.
         #  This will be helpful in determining how much was spent before the most recent day.
 
+    @staticmethod
+    def sum_dictionary(acct_dic):
+        """
+        Merge all dictionaries within this dictionary together into a total for all accounts.
+
+        :param acct_dic: input dictionary
+        :return: dictionary
+        """
+        key, value = acct_dic.popitem()
+        total = value
+        for a in acct_dic:
+            total = GraphGenerator.merge_dictionaries(total, acct_dic[a])
+        return total
+
     def create_management_report_body(self, response_by_account):
         """
         Create a string version of the body of the management report.
@@ -302,7 +316,7 @@ class ReportGenerator:
             # If money was spent create a report otherwise indicate no activity.
             if acct_data['Owner']['Total']:
 
-                # Print total spent for each user
+                # total spent for each user
                 for user, expenditures in acct_data['Owner'].items():
                     if user != 'Total':  # The total across all users is stored alongside them and should be ignored.
 
@@ -324,7 +338,7 @@ class ReportGenerator:
 
         return report
 
-    def create_report_body(self, user, response_by_account):
+    def create_individual_report_body(self, user, response_by_account):
         """
         Create a string version of a report detailing the expenditures of a user.
 
@@ -363,57 +377,9 @@ class ReportGenerator:
 
         return report
 
-    def send_management_report(self, recipients, accounts=None, clean=True):
-        """
-        Email a report, tailored to managers, to a list of recipients.
-
-        :param list(str) recipients: The recipients of the email. Defaults to the value of users.
-        :param list(str) accounts: The account aliases of interest.
-        """
-        if not os.path.exists("/tmp/"): # create directory to store graphs in
-            os.mkdir("/tmp/")
-
-        if not os.path.exists("/tmp/%s" % '_'.join(recipients)):
-            os.mkdir("/tmp/%s" % '_'.join(recipients))
-
-        response_by_account = dict()
-
-        if accounts:
-            accounts = [self.aliases_to_nums[alias] for alias in accounts]
-        else:
-            accounts = self.account_nums
-
-        # Determine expenditures across all accounts.
-        for acct_num in accounts:
-            response = self.api_call(account_nums=[acct_num])
-            processed = self.process_api_response(response)
-            response_by_account[acct_num] = processed
-
-            response_by_account[acct_num] = {}
-            for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
-                response = self.api_call(account_nums=[acct_num], group_by=category)
-                processed = self.process_api_response(response, levels=1)
-                response_by_account[acct_num][category] = processed
-
-        # Create graphics.
-        for acct in response_by_account:
-            self.create_account_graphics(response_by_account, '_'.join(recipients), acct)
-
-            # Add in the total field for purposes of making the text report
-            response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'], response_by_account[acct]['Owner']['Total'])
-
-        report = self.create_management_report_body(response_by_account)  # Make the text report
-
-        # Send emails.
-        for recipient in recipients:
-            self.send_email(recipient, report, "/tmp/%s" % '_'.join(recipients))
-
-        if clean:
-            GraphGenerator.clean()  # delete images once they're used
-
     def create_account_graphics(self, response_by_account, recipient, acct):
         # Make a graph for this account organized by owner and save it as a png
-        plt_by_owner = GraphGenerator.graph_individual(response_by_account[acct]['Owner'],
+        plt_by_owner = GraphGenerator.graph_bar(response_by_account[acct]['Owner'],
                                                        "%s Costs This Month By Owner" % self.nums_to_aliases[acct],
                                                        self.start_date, self.end_date)
 
@@ -422,7 +388,7 @@ class ReportGenerator:
         plt_by_owner[0].close()
 
         # Make a graph for this account organized by service and save it as a png
-        plt_by_service = GraphGenerator.graph_individual(response_by_account[acct]['Service'],
+        plt_by_service = GraphGenerator.graph_bar(response_by_account[acct]['Service'],
                                                          "%s Costs This Month By Service" % self.nums_to_aliases[acct]
                                                          , self.start_date, self.end_date)
 
@@ -431,73 +397,11 @@ class ReportGenerator:
                                   bbox_inches='tight', dpi=200)
         plt_by_service[0].close()
 
-    def send_individual_report(self, user, recipients=None, accounts=None, clean=True):
-        """
-        Email a report detailing the expenditures of a given user.
-
-        :param str user: The email address of the user who the report is about.
-        :param list(str) recipients: The recipient of the email. If not specified, will default to user.
-        :param bool clean: If true, delete the image directory at the end.
-        :param list(str) accounts: The account aliases of interest. If not specified it will default to self.account_nums
-                                   (all accounts under the organization).
-        """
-        if accounts:
-            accounts = [self.aliases_to_nums[alias] for alias in accounts]
-        else:
-            accounts = self.account_nums
-
-        recipients = recipients or [user]
-
-        # Determine expenditures for the user across all accounts.
-        response_by_account = dict()
-        for acct_num in accounts:
-            response = self.api_call([user], [acct_num])
-            processed = self.process_api_response(response)
-            response_by_account[acct_num] = processed
-
-        if user == "":
-            user = "Untagged"
-
-        total = ReportGenerator.sum_dictionary(response_by_account)
-        response_by_account["Total"] = total
-
-        if not os.path.exists("/tmp/"):
-            os.mkdir("/tmp/")
-        if not os.path.exists("/tmp/%s" % user):  # create directory to store graphs in
-            os.mkdir("/tmp/%s" % user)
-
-        # Create graphics.
-        for acct in response_by_account:
-            if user in response_by_account[acct]:  # create graphical reports
-                self.create_individual_graphics(response_by_account, user, acct)
-
-        report = self.create_report_body(user, response_by_account)
-
-        for recipient in recipients:  # Send emails
-            self.send_email(recipient, report, "/tmp/%s" % user)  # send the text and graphs together in an email
-
-        if clean:
-            GraphGenerator.clean()  # delete images once they're used
-
     def create_individual_graphics(self, response_by_account, user, acct):
-        plt = GraphGenerator.graph_individual(response_by_account[acct][user], "%s's %s Costs This Month"
+        plt = GraphGenerator.graph_bar(response_by_account[acct][user], "%s's %s Costs This Month"
                                               % (user, self.nums_to_aliases[acct]), self.start_date, self.end_date)
         plt[0].savefig("/tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
         plt[0].close()
-
-    @staticmethod
-    def sum_dictionary(acct_dic):
-        """
-        Merge all dictionaries within this dictionary together into a total for all accounts.
-
-        :param acct_dic: input dictionary
-        :return: dictionary
-        """
-        key, value = acct_dic.popitem()
-        total = value
-        for a in acct_dic:
-            total = GraphGenerator.merge_dictionaries(total, acct_dic[a])
-        return total
 
     def send_email(self, recipient, email_body, attachments_path=None):
         """
@@ -509,6 +413,7 @@ class ReportGenerator:
 
         :param str recipient: the email address to send to
         :param str email_body: a string containing the entire email message
+        :param str attachments_path: path to a folder containing image files to attach to the email, if desired
         """
 
         sender = "FAKE EMAIL"
@@ -534,3 +439,95 @@ class ReportGenerator:
 
         s.sendmail(sender, recipient, text)
         s.quit()
+
+    def send_management_report(self, recipients, accounts=None, clean=True):
+        """
+        Email a report, tailored to managers, to a list of recipients.
+
+        :param list(str) recipients: The recipients of the email. Defaults to the value of users.
+        :param list(str) accounts: The account aliases of interest.
+        :param bool clean: If true, delete the image directory at the end.
+        """
+        if not os.path.exists("/tmp/"):  # create directory to store graphs in
+            os.mkdir("/tmp/")
+
+        if not os.path.exists("/tmp/%s" % '_'.join(recipients)):
+            os.mkdir("/tmp/%s" % '_'.join(recipients))
+
+        response_by_account = dict()
+
+        if accounts:
+            accounts = [self.aliases_to_nums[alias] for alias in accounts]
+        else:
+            accounts = self.account_nums
+
+        # Determine expenditures across all accounts.
+        for acct_num in accounts:
+            response_by_account[acct_num] = {}
+            for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
+                response = self.api_call(account_nums=[acct_num], group_by=category)
+                processed = self.process_one_level_api_response(response)
+                response_by_account[acct_num][category] = processed
+
+        # Create graphics.
+        for acct in response_by_account:  # Add in the total field for purposes of making the text report
+            self.create_account_graphics(response_by_account, '_'.join(recipients), acct)
+            response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'],
+                                                     response_by_account[acct]['Owner']['Total'])
+
+        report = self.create_management_report_body(response_by_account)  # Make the text report
+
+        # Send emails.
+        for recipient in recipients:
+            self.send_email(recipient, report, "/tmp/%s" % '_'.join(recipients))
+
+        if clean:
+            GraphGenerator.clean()  # delete images once they're used
+
+    def send_individual_report(self, user, recipients=None, accounts=None, clean=True):
+        """
+        Email a report detailing the expenditures of a given user.
+
+        :param str user: The email address of the user who the report is about.
+        :param list(str) recipients: The recipient of the email. If not specified, will default to user.
+        :param list(str) accounts: The account aliases of interest. If not specified, defaults to self.account_nums
+                                   (all accounts under the organization).
+        :param bool clean: If true, delete the image directory at the end.
+        """
+        if accounts:
+            accounts = [self.aliases_to_nums[alias] for alias in accounts]
+        else:
+            accounts = self.account_nums
+
+        recipients = recipients or [user]
+
+        # Determine expenditures for the user across all accounts.
+        response_by_account = dict()
+        for acct_num in accounts:
+            response = self.api_call([user], [acct_num])
+            processed = self.process_two_level_api_response(response)
+            response_by_account[acct_num] = processed
+
+        if user == "":
+            user = "Untagged"
+
+        total = ReportGenerator.sum_dictionary(response_by_account)
+        response_by_account["Total"] = total
+
+        if not os.path.exists("/tmp/"):
+            os.mkdir("/tmp/")
+        if not os.path.exists("/tmp/%s" % user):  # create directory to store graphs in
+            os.mkdir("/tmp/%s" % user)
+
+        # Create graphics.
+        for acct in response_by_account:
+            if user in response_by_account[acct]:  # create graphical reports
+                self.create_individual_graphics(response_by_account, user, acct)
+
+        report = self.create_individual_report_body(user, response_by_account)
+
+        for recipient in recipients:  # Send emails
+            self.send_email(recipient, report, "/tmp/%s" % user)  # send the text and graphs together in an email
+
+        if clean:
+            GraphGenerator.clean()  # delete images once they're used
