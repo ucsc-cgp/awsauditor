@@ -106,7 +106,7 @@ class GraphGenerator:
         return dic2_copy
 
     @staticmethod
-    def graph_bar(data, title, start_date, end_date, total=False, first=None):
+    def graph_bar(data, title, start_date, end_date, total=False, first=None, dark=False):
         """
         Display a matplotlib bar graph of data.
 
@@ -116,9 +116,12 @@ class GraphGenerator:
         :param str end_date: the end date of the data, in the format YYYY-MM-DD
         :param bool total: if true, display data as a cumulative total cost each day
         :param str first: if specified, plot this person's data first so it is easier for them to read
+        :param bool dark: if true, plot on a dark background
         :return: matplotlib plot
         """
-        plt.style.use(os.path.abspath("elip12.mplstyle"))  # style definition
+        if dark:
+            plt.style.use(os.path.abspath("elip12.mplstyle"))  # style definition
+
         plt.figure(figsize=(5, 5))
         axes = plt.axes()
         axes.xaxis.set_major_locator(ticker.MultipleLocator(1))  # set the tick marks to integer values
