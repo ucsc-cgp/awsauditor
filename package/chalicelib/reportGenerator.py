@@ -1,12 +1,15 @@
+import base64
 import boto3
+from botocore.exceptions import ClientError
 from collections import defaultdict
+import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+import json
 import smtplib
-import datetime
 import os
-from chalicelib.graphGenerator import GraphGenerator
+from graphGenerator import GraphGenerator
 
 
 class ReportGenerator:
@@ -20,7 +23,7 @@ class ReportGenerator:
     https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
     """
 
-    def __init__(self, start_date, end_date, granularity='DAILY', metrics=None):
+    def __init__(self, start_date, end_date, secret_name, granularity='DAILY', metrics=None):
         """
         Create boto3.client and dictionaries that will be used in later functions.
 
@@ -41,6 +44,30 @@ class ReportGenerator:
 
         self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases_dicts()
         self.account_nums = list(self.nums_to_aliases.keys())
+
+        credentials = self.get_email_credentials(secret_name)
+        self.email = list(credentials.keys())[0]
+        self.password = credentials[self.email]
+        print(self.email, self.password)
+
+    def get_email_credentials(self, secret_name):
+        """
+        Retrieve email address and password pair from AWS Secrets Manager
+
+        :param str secret_name: The id of the secret in AWS. Can be ARN or friendly name
+        :return: dict in the format {you@gmail.com: p@ssw0rd}
+        """
+        region_name = "us-west-2"
+
+        # Create a Secrets Manager client
+        session = boto3.session.Session()
+        client = session.client(service_name='secretsmanager', region_name=region_name)
+
+        response = client.get_secret_value(SecretId=secret_name)
+
+        if 'SecretString' in response:
+            secret = json.loads(response['SecretString'])
+            return secret
 
     @staticmethod
     def increment_date(date):
@@ -417,12 +444,14 @@ class ReportGenerator:
         :param str attachments_path: path to a folder containing image files to attach to the email, if desired
         """
 
-        sender = "FAKE EMAIL"
+        sender = self.email
 
         msg = MIMEMultipart()  # set up the email
         msg['Subject'] = 'Your AWS Expenses - from {} - {}'.format(self.start_date, self.end_date)
         msg['From'] = sender
         msg['To'] = recipient
+
+        print(recipient)
 
         msg.attach(MIMEText(email_body))
 
@@ -434,7 +463,7 @@ class ReportGenerator:
 
         s = smtplib.SMTP('smtp.gmail.com', 587)
         s.starttls()
-        s.login(sender, "FAKE PASSWORD")
+        s.login(sender, self.password)
 
         text = msg.as_string()
 
@@ -463,6 +492,10 @@ class ReportGenerator:
         else:
             accounts = self.account_nums
 
+        print(accounts)
+
+        print(os.listdir("/tmp/%s" % '_'.join(recipients)))
+
         # Determine expenditures across all accounts.
         for acct_num in accounts:
             response_by_account[acct_num] = {}
@@ -476,6 +509,8 @@ class ReportGenerator:
             self.create_account_graphics(response_by_account, '_'.join(recipients), acct)
             response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'],
                                                      response_by_account[acct]['Owner']['Total'])
+
+        print(os.listdir("/tmp/%s" % '_'.join(recipients)))
 
         report = self.create_management_report_body(response_by_account)  # Make the text report
 
