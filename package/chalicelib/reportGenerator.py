@@ -46,28 +46,25 @@ class ReportGenerator:
         self.account_nums = list(self.nums_to_aliases.keys())
 
         credentials = self.get_email_credentials(secret_name)
-        self.email = list(credentials.keys())[0]
-        self.password = credentials[self.email]
+        self.email = credentials[0]
+        self.password = credentials[1]
 
     @staticmethod
-    def get_email_credentials(self, secret_name):
+    def get_email_credentials(secret_name, region_name="us-west-2"):
         """
         Retrieve email address and password pair from AWS Secrets Manager
 
         :param str secret_name: The id of the secret in AWS. Can be ARN or friendly name
+        :param str region_name: The AWS region to look at. Defaults to us-west-2
         :return: dict in the format {you@gmail.com: p@ssw0rd}
         """
-        region_name = "us-west-2"
 
-        # Create a Secrets Manager client
-        session = boto3.session.Session()
-        client = session.client(service_name='secretsmanager', region_name=region_name)
+        client = boto3.client(service_name='secretsmanager', region_name=region_name)  # Create a Secrets Manager client
 
         response = client.get_secret_value(SecretId=secret_name)
+        secret = json.loads(response['SecretString'])
 
-        if 'SecretString' in response:
-            secret = json.loads(response['SecretString'])
-            return secret
+        return list(secret.keys())[0], list(secret.values())[0]
 
     @staticmethod
     def increment_date(date):

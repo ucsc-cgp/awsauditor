@@ -15,7 +15,7 @@ def main():
 
     users = ['user1@email.com', 'user2@email.com']
 
-    r = ReportGenerator(start_date=start, end_date=end, secret_name="your arn")
+    r = ReportGenerator(start_date=start, end_date=end)
 
     # Send account management reports
     for manager, accounts in manager_accounts.items():
