@@ -1,11 +1,13 @@
 import boto3
 from collections import defaultdict
+import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+import json
 import smtplib
-import datetime
 import os
+import pprint
 from graphGenerator import GraphGenerator
 
 
@@ -20,7 +22,7 @@ class ReportGenerator:
     https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
     """
 
-    def __init__(self, start_date, end_date, granularity='DAILY', metrics=None):
+    def __init__(self, start_date, end_date, secret_name, granularity='DAILY', metrics=None):
         """
         Create boto3.client and dictionaries that will be used in later functions.
 
@@ -41,6 +43,25 @@ class ReportGenerator:
 
         self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases_dicts()
         self.account_nums = list(self.nums_to_aliases.keys())
+
+        self.email, self.password = self.get_email_credentials(secret_name)
+
+    @staticmethod
+    def get_email_credentials(secret_name, region_name="us-west-2"):
+        """
+        Retrieve email address and password pair from AWS Secrets Manager
+
+        :param str secret_name: The id of the secret in AWS. Can be ARN or friendly name
+        :param str region_name: The AWS region to look at. Defaults to us-west-2
+        :return: dict in the format {you@gmail.com: p@ssw0rd}
+        """
+
+        client = boto3.client(service_name='secretsmanager', region_name=region_name)  # Create a Secrets Manager client
+
+        response = client.get_secret_value(SecretId=secret_name)
+        secret = json.loads(response['SecretString'])
+
+        return next(iter(secret.items()))
 
     @staticmethod
     def increment_date(date):
@@ -436,7 +457,7 @@ class ReportGenerator:
         :param str attachments_path: path to a folder containing image files to attach to the email, if desired
         """
 
-        sender = "FAKE EMAIL"
+        sender = self.email
 
         msg = MIMEMultipart()  # set up the email
         msg['Subject'] = 'Your AWS Expenses - from {} - {}'.format(self.start_date, self.end_date)
@@ -453,7 +474,7 @@ class ReportGenerator:
 
         s = smtplib.SMTP('smtp.gmail.com', 587)
         s.starttls()
-        s.login(sender, "FAKE PASSWORD")
+        s.login(sender, self.password)
 
         text = msg.as_string()
 
@@ -552,3 +573,4 @@ class ReportGenerator:
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
+
