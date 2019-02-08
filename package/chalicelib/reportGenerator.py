@@ -166,8 +166,7 @@ class ReportGenerator:
             TimePeriod={'End': self.increment_date(self.end_date),  # Cost Explorer API's query has an exclusive upper bound.
                         'Start': self.start_date}
         )
-        pp = pprint.PrettyPrinter()
-        pp.pprint(response)
+
         return response
 
     @staticmethod
@@ -301,8 +300,6 @@ class ReportGenerator:
             processed[owner]['Total'] = owner_total
         processed['Total'] = everyone_total
 
-        pp = pprint.PrettyPrinter()
-        pp.pprint(processed)
         return processed
 
         # TODO Add an 'Previous' total which the day before's total.
