@@ -1,6 +1,4 @@
-import base64
 import boto3
-from botocore.exceptions import ClientError
 from collections import defaultdict
 import datetime
 from email.mime.multipart import MIMEMultipart
@@ -9,7 +7,8 @@ from email.mime.image import MIMEImage
 import json
 import smtplib
 import os
-from chalicelib.graphGenerator import GraphGenerator
+import pprint
+from graphGenerator import GraphGenerator
 
 
 class ReportGenerator:
@@ -45,9 +44,7 @@ class ReportGenerator:
         self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases_dicts()
         self.account_nums = list(self.nums_to_aliases.keys())
 
-        credentials = self.get_email_credentials(secret_name)
-        self.email = credentials[0]
-        self.password = credentials[1]
+        self.email, self.password = self.get_email_credentials(secret_name)
 
     @staticmethod
     def get_email_credentials(secret_name, region_name="us-west-2"):
@@ -169,7 +166,8 @@ class ReportGenerator:
             TimePeriod={'End': self.increment_date(self.end_date),  # Cost Explorer API's query has an exclusive upper bound.
                         'Start': self.start_date}
         )
-
+        pp = pprint.PrettyPrinter()
+        pp.pprint(response)
         return response
 
     @staticmethod
@@ -303,6 +301,8 @@ class ReportGenerator:
             processed[owner]['Total'] = owner_total
         processed['Total'] = everyone_total
 
+        pp = pprint.PrettyPrinter()
+        pp.pprint(processed)
         return processed
 
         # TODO Add an 'Previous' total which the day before's total.
@@ -558,3 +558,4 @@ class ReportGenerator:
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
+
