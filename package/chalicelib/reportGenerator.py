@@ -22,7 +22,7 @@ class ReportGenerator:
     https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
     """
 
-    def __init__(self, start_date, end_date, secret_name, granularity='DAILY', metrics=None):
+    def __init__(self, start_date, end_date, secret_name=None, granularity='DAILY', metrics=None):
         """
         Create boto3.client and dictionaries that will be used in later functions.
 
@@ -30,6 +30,7 @@ class ReportGenerator:
 
         :param str start_date: The first date of the inquiry. (inclusive)
         :param str end_date: The last date of the inquiry. (exclusive)
+        :param str secret_name: The name of the secret used to grab email config
         :param list(str) accounts: The accounts for which information will be gathered.
         :param str granularity: The "resolution" of the data. Must be 'DAILY' or 'MONTHLY'.
         :param list(str) metrics: The metrics returned in the query.
@@ -44,7 +45,9 @@ class ReportGenerator:
         self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases_dicts()
         self.account_nums = list(self.nums_to_aliases.keys())
 
-        self.email, self.password = self.get_email_credentials(secret_name)
+        # secret_name is optional because the unit tests rely on nonstatic functions but do not need to send emails.
+        if secret_name:
+            self.email, self.password = self.get_email_credentials(secret_name)
 
     @staticmethod
     def get_email_credentials(secret_name, region_name="us-west-2"):

@@ -113,11 +113,8 @@ class ReportGeneratorTest(unittest.TestCase):
         """
         acct_expenditures = {
                         '1234': {'Owner': {
-                                    'user1': {'service1': {'2019-01-01': 1.0005, '2019-01-02': 0.1005, 'Total': 1.101, 'Increase': 0.1005},
-                                              'Total': 1.101, 'Increase': 0.1005},
-                                    'user2': {'service1': {'2019-01-01': 0.0005, '2019-01-02': 0.0005, 'Total': 0.001, 'Increase': 0.0005},
-                                              'service2': {'2019-01-01': 0.0005, '2019-01-02': 0.0005, 'Total': 0.001, 'Increase': 0.0005},
-                                              'Total': 0.002, 'Increase': 0.001},
+                                    'user1': {'2019-01-01': 1.0005, '2019-01-02': 0.1005, 'Total': 1.101, 'Increase': 0.1005},
+                                    'user2': {'2019-01-01': 0.001, '2019-01-02': 0.001, 'Total': 0.002, 'Increase': 0.001},
                                     'Total': 1.103, 'Increase': 0.1015}}
                      }
 
