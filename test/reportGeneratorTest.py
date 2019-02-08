@@ -43,7 +43,7 @@ class ReportGeneratorTest(unittest.TestCase):
     def testProcessAPI(self):
         """Ensure that the response returned from the API is reformatted as expected."""
 
-        results = ReportGenerator.process_api_response(self.sample_response)
+        results = ReportGenerator.process_api_response_for_individual(self.sample_response)
 
         expected_results = {
                             'user1': {'service1': {'2019-01-01': 0.0005, '2019-01-02': 0.0005, 'Total': 0.001},
@@ -58,10 +58,10 @@ class ReportGeneratorTest(unittest.TestCase):
 
     def testCreateReportBodyNoExpenditures(self):
         """Ensure that an account with no expenditures is treated as such in ReportGenerator.create_report_body()."""
-        unused_acct = {'1234': {'Total': 0.0}}
+        unused_acct = {'1234': {'Total': 0.0}, 'Total': {'Total': 0.0}}
 
         expected_report = 'Report for {}\n\n\n\tNo expenditures from {} to {}\n\n'.format(self.username, self.start_date, self.end_date)
-        generated_report = self.rg.create_report_body(self.username, unused_acct)
+        generated_report = self.rg.create_individual_report_body(self.username, unused_acct)
 
         self.assertEqual(expected_report, generated_report)
 
@@ -69,14 +69,15 @@ class ReportGeneratorTest(unittest.TestCase):
         """Ensure that the report body is generated appropriately in ReportGenerator.create_report_body()."""
         arbitrary_acct_num, arbitrary_acct_name = next(iter(self.rg.nums_to_aliases.items()))
         acct_expenditures = {'9999': {'Total': 0.0},
-                             arbitrary_acct_num: {self.username: {'EC2': {'Total': 56.78}, 'Total': 56.78}, 'Total': 56.78}}
+                             arbitrary_acct_num: {self.username: {'EC2': {'Total': 56.78}, 'Total': 56.78}, 'Total': 56.78},
+                             'Total': {'Total': 56.78}}
 
         expected_report = 'Report for {}\n\n\t\t{}\n\t\t\t{:40} ${:.2f}\n'.format(self.username, arbitrary_acct_name, 'EC2', 56.78)
         expected_report += '\t\t\t' + '-' * 47 + '\n'
         expected_report += '\t\t\t{:40} ${:.2f}\n\n'.format('Total', 56.78)
         expected_report += '\t\tExpenditures from {} to {}:  {}\n\n'.format(self.start_date, self.end_date, '$' + str(56.78))
 
-        report = self.rg.create_report_body(self.username, acct_expenditures)
+        report = self.rg.create_individual_report_body(self.username, acct_expenditures)
 
         self.assertNotIn('9999', report)
         self.assertEqual(expected_report, report)
@@ -85,7 +86,7 @@ class ReportGeneratorTest(unittest.TestCase):
         """Tests ReportGenerator.create_management_report() effectively catches unused accounts."""
         acct_expenditures = dict()
         for acct_num in self.rg.nums_to_aliases:
-            acct_expenditures.update({acct_num: {'Total': 0.0}})
+            acct_expenditures.update({acct_num: {'Owner': {'Total': 0.0}}})
 
         report = self.rg.create_management_report_body(acct_expenditures)
 
@@ -106,22 +107,22 @@ class ReportGeneratorTest(unittest.TestCase):
             the total across the account is displayed
         """
         acct_expenditures = {
-                        '1234': {
+                        '1234': {'Owner': {
                                     'user1': {'service1': {'2019-01-01': 1.0005, '2019-01-02': 0.0005, 'Total': 1.001},
                                               'Total': 1.001},
                                     'user2': {'service1': {'2019-01-01': 0.0005, '2019-01-02': 0.0005, 'Total': 0.001},
                                               'service2': {'2019-01-01': 0.0005, '2019-01-02': 0.0005, 'Total': 0.001},
                                               'Total': 0.002},
-                                    'Total': 1.003}
+                                    'Total': 1.003}}
                      }
 
         report = self.rg.create_management_report_body(acct_expenditures)
 
         # As user's data are stored in a dict, we cannot rely on the order of their appeareance in the report.
         # The best we can do is check that their lines come out as expected.
-        exp_user1_line = '\t\t\t{:26} ${:.2f}\n'.format('user1', acct_expenditures['1234']['user1']['Total'])
+        exp_user1_line = '\t\t\t{:26} ${:.2f}\n'.format('user1', acct_expenditures['1234']['Owner']['user1']['Total'])
         exp_user2_line = '\t\t\t{:26} <$0.01\n'.format('user2')
-        total_line = '\t\t\t{:26} ${:.2f}\n\n'.format('Total', acct_expenditures['1234']['Total'])
+        total_line = '\t\t\t{:26} ${:.2f}\n\n'.format('Total', acct_expenditures['1234']['Owner']['Total'])
 
         self.assertIn(exp_user1_line, report)
         self.assertIn(exp_user2_line, report)

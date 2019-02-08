@@ -115,7 +115,7 @@ class ReportGenerator:
         elif group_by == "Service":
             group_list = [{'Type': 'DIMENSION', 'Key': 'SERVICE'}]
 
-        else:  # The order of the elements of this list matters for ReportGenerator.process_api_response.
+        else:  # The order of the elements of this list matters for ReportGenerator.process_api_response_for_individuals.
             # Owner & service must be at indices 0 & 1, respectively.
             group_list = [{'Type': 'TAG', 'Key': 'Owner'}, {'Type': 'DIMENSION', 'Key': 'SERVICE'}]
 
