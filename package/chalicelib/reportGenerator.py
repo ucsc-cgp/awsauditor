@@ -61,7 +61,7 @@ class ReportGenerator:
         response = client.get_secret_value(SecretId=secret_name)
         secret = json.loads(response['SecretString'])
 
-        return list(secret.keys())[0], list(secret.values())[0]
+        return next(iter(secret.items()))
 
     @staticmethod
     def increment_date(date):
