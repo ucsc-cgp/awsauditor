@@ -149,11 +149,11 @@ class ReportGenerator:
         return response
 
     @staticmethod
-    def process_api_response_for_individual(response):
+    def process_api_response_for_individual(response, end_date):
         """
-        Turns the response from the AWS Cost Explorer API into more accessible data.
+        Turns the response from the AWS Cost Explorer API into accessible data for creating individual reports.
 
-        Use this if the api call was made with group_by BOTH service and owner (for individual reports)
+        Use this if self.api_call was made without specifying the group_by argument ie: grouped by BOTH service and owner.
         The returned object is a dictionary of dictionaries that associates a service with a dictionary associating
         dates and costs.
 
@@ -164,9 +164,11 @@ class ReportGenerator:
                         {
                             '2018-12-30': 126.45,
                             '2018-12-31': 60.45,
-                            'Total': 186.90
+                            'Total': 186.90,
+                            'Increase': 60.45
                         }, ...,
-                    'Total': 326.95
+                    'Total': 326.95,
+                    'Increase': 73.40
                     },
 
                 'username2' : {
@@ -174,16 +176,19 @@ class ReportGenerator:
                         {
                             '2018-12-30': 365.63,
                             '2018-12-31': 100.00,
-                            'Total': 465.63
+                            'Total': 465.63,
+                            'Increase': 100.00
                         }, ...,
-                    'Total': 763.23
+                    'Total': 763.23,
+                    'Increase': 215.00
                 },...,
 
-                'Total': 12345.33
-
+                'Total': 12345.33,
+                'Increase': 340.00
             }
 
         :param dict response: The response from the AWS Cost Explorer API.
+        :param str end_date: The last date in the query range. Used to determine how much costs have increased since yesterday.
         :returns defaultdict(defaultdict(dict)) processed: Data from the response organized by service:date:cost.
         """
 
@@ -211,7 +216,7 @@ class ReportGenerator:
                     else:
                         processed[owner][service][date] = cost
 
-        # Calculate totals for each owner, service and overall.
+        # Calculate totals for each owner, service and overall as well as how much they increased since yesterday.
         everyone_total = 0.0
         for owner in processed:
             owner_total = 0.0
@@ -225,13 +230,18 @@ class ReportGenerator:
                     everyone_total += cost
 
                 processed[owner][service]['Total'] = service_total
+                processed[owner][service]['Increase'] = processed[owner][service][end_date] if end_date in processed[owner][service] else 0.0
+
             processed[owner]['Total'] = owner_total
+            processed[owner]['Increase'] = sum([processed[owner][service]['Increase'] for service in processed[owner] if service != 'Total'])
+
         processed['Total'] = everyone_total
+        processed['Increase'] = sum([processed[owner]['Increase'] for owner in processed if owner != 'Total']) if everyone_total else 0.0
 
         return processed
 
     @staticmethod
-    def process_api_response_for_managers(response):
+    def process_api_response_for_managers(response, end_date):
         """
         Turns the response from the AWS Cost Explorer API into more accessible data.
 
@@ -277,12 +287,12 @@ class ReportGenerator:
                 everyone_total += cost
 
             processed[owner]['Total'] = owner_total
+            processed[owner]['Increase'] = processed[owner][end_date] if end_date in processed[owner] else 0.0
+
         processed['Total'] = everyone_total
+        processed['Increase'] = sum(processed[owner]['Increase'] for owner in processed if owner != 'Total') if everyone_total else 0.0
 
         return processed
-
-        # TODO Add an 'Previous' total which the day before's total.
-        #  This will be helpful in determining how much was spent before the most recent day.
 
     @staticmethod
     def sum_dictionary(acct_dic):
@@ -308,6 +318,7 @@ class ReportGenerator:
         :return str report: A string containing the report.
         """
         all_accts_total = 0.0
+        all_accts_increase = 0.0
         report = '\nReport for ' + ', '.join([self.nums_to_aliases[acct_num] for acct_num in response_by_account.keys()]) + '\n'
         report += '\tExpenditures from {} - {}\n\n'.format(self.start_date, self.end_date)
 
@@ -319,23 +330,31 @@ class ReportGenerator:
 
                 # total spent for each user
                 for user, expenditures in acct_data['Owner'].items():
-                    if user != 'Total':  # The total across all users is stored alongside them and should be ignored.
-
+                    if user not in ['Total', 'Increase']:  # The total across all users is stored alongside them and should be ignored.
                         total = expenditures['Total']
+                        increase = expenditures['Increase']
+
                         all_accts_total += total
+                        all_accts_increase += increase
+
                         if total >= 0.01:
-                            report += '\t\t\t{:26} ${:.2f}\n'.format(user, total)
+                            report += '\t\t\t{:40} ${:.2f}'.format(user, total)
                         else:
-                            report += '\t\t\t{:26} <$0.01\n'.format(user)
+                            report += '\t\t    {:40}<$0.01'.format(user)
+
+                        if increase >= 0.01:
+                            report += '\t\tup ${:.2f}\n'.format(increase)
+                        else:
+                            report += '\t    up <$0.01\n'
 
                 report += '\t\t\t' + '-' * 34 + '\n'
-                report += '\t\t\t{:26} ${:.2f}\n\n'.format('Total', acct_data['Owner']['Total'])
+                report += '\t\t\t{:40} ${:.2f}\t\tup ${:.2f}\n\n'.format('Total', acct_data['Owner']['Total'], acct_data['Owner']['Increase'])
 
             else:
                 report += '\t\t\tNo Activity from {} - {}\n\n'.format(self.start_date, self.end_date)
 
         if all_accts_total:
-            report += '\t\t{:30} ${:.2f}'.format('Total for all accounts:', all_accts_total)
+            report += '\t\t{:44} ${:.2f}\t\tup ${:.2f}\n'.format('Total for all accounts:', all_accts_total, all_accts_increase)
 
         return report
 
@@ -356,20 +375,20 @@ class ReportGenerator:
             for acct_num, data in response_by_account.items():
 
                 # Only print information for accounts on which money was spent, and don't print the total breakdown.
-                if data['Total'] and acct_num != "Total":
+                if data['Total'] and acct_num not in ['Total', 'Increase']:
                     report += '\t\t{}\n'.format(self.nums_to_aliases[acct_num])
 
                     # Breakdown by services used.
                     for service, total in data[user].items():
-                        if service != 'Total':  # The total across all services is stored alongside them and should be ignored.
+                        if service not in ['Total', 'Increase']:  # The total across all services is stored alongside them and should be ignored.
                             t = total['Total']
-                            report += '\t\t\t{:40} ${:.2f}\n'.format(service, t)
+                            report += '\t\t\t{:40} ${:.2f}\t\tup ${:.2f}\n'.format(service, t, total['Increase'])
 
                     report += '\t\t\t' + '-' * 47 + '\n'
-                    report += '\t\t\t{:40} ${:.2f}\n\n'.format('Total', data['Total'])
+                    report += '\t\t\t{:40} ${:.2f}\t\tup ${:.2f}\n\n'.format('Total', data['Total'], data['Increase'])
 
             # TODO fix this string formatting. Using spaces for alignment is janky.
-            report += '\t\tExpenditures from {} to {}:  ${:.2f}\n'.format(self.start_date, self.end_date, spent_money)
+            report += '\t\tExpenditures from {} to {}:  ${:.2f}\t\tup ${:.2f}\n'.format(self.start_date, self.end_date, spent_money, data['Increase'])
 
         else:
             report += '\n\tNo expenditures from {} to {}\n'.format(self.start_date, self.end_date)
@@ -468,7 +487,7 @@ class ReportGenerator:
             response_by_account[acct_num] = {}
             for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
                 response = self.api_call(account_nums=[acct_num], group_by=category)
-                processed = self.process_api_response_for_managers(response)
+                processed = self.process_api_response_for_managers(response, self.end_date)
                 response_by_account[acct_num][category] = processed
 
         # Create graphics.
@@ -508,14 +527,13 @@ class ReportGenerator:
         response_by_account = dict()
         for acct_num in accounts:
             response = self.api_call([user], [acct_num])
-            processed = self.process_api_response_for_individual(response)
+            processed = self.process_api_response_for_individual(response, self.end_date)
             response_by_account[acct_num] = processed
 
         if user == "":
             user = "Untagged"
 
-        total = ReportGenerator.sum_dictionary(response_by_account)
-        response_by_account["Total"] = total
+        response_by_account["Total"] = ReportGenerator.sum_dictionary(response_by_account)
 
         if not os.path.exists("tmp/"):
             os.mkdir("tmp/")
