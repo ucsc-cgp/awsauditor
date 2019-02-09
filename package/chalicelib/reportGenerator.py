@@ -15,7 +15,7 @@ class ReportGenerator:
     """
     A tool for creating reports based off of AWS Cost Explorer API responses.
 
-    Note that each Cost Explorer API request costs $0.01
+    Note that each Cost Explorer API request costs $0.01. There may be other expenses associated with API calls.
     See the following for more information: https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/ce-what-is.html
 
     See the following link for more information about the response and request syntax and options:
@@ -28,10 +28,13 @@ class ReportGenerator:
 
         Note that your results will be restricted by your boto3 permissions.
 
+        In order to take advantage of this class's emailing functionality you must have an email address and password
+        stored in an AWS Secrets Manager. Provide the secret name to the secret_name argument to enable this. Attempts
+        to use this functionality with out configuring it will result in a RuntimeError.
+
         :param str start_date: The first date of the inquiry. (inclusive)
         :param str end_date: The last date of the inquiry. (exclusive)
-        :param str secret_name: The name of the secret used to grab email config
-        :param list(str) accounts: The accounts for which information will be gathered.
+        :param str secret_name: The name of the secret in AWS Secret manager used to grab email config.
         :param str granularity: The "resolution" of the data. Must be 'DAILY' or 'MONTHLY'.
         :param list(str) metrics: The metrics returned in the query.
         """
@@ -45,8 +48,10 @@ class ReportGenerator:
         self.nums_to_aliases, self.aliases_to_nums = self.build_nums_to_aliases_dicts()
         self.account_nums = list(self.nums_to_aliases.keys())
 
-        # secret_name is optional because the unit tests rely on nonstatic functions but do not need to send emails.
-        if secret_name:
+        # Making secret_name an optional arg allows the unit tests to run without specifying a secret. At this time,
+        # there are no tests that make use of that functionality.
+        self.secret_name_set = bool(secret_name)
+        if self.secret_name_set:
             self.email, self.password = self.get_email_credentials(secret_name)
 
     @staticmethod
@@ -451,38 +456,41 @@ class ReportGenerator:
         """
         Send the report to a recipient.
 
-        Unfortunately, at this time you must hard-code your own email address and password into the source code
-        to enable this functionality. It might be necessary to enable third-party access to your email account. If
-        you are using a gmail account you will be prompted to allow this after your first attempted use.
+        It might be necessary to enable third-party access to your email account. If
+        you are using a gmail account you might be prompted to allow this after your first attempted use.
 
+        :raises RuntimeError: Not providing an AWS Secret Manager secret name at initialization and attempting to use
+                              this function will cause it to break.
         :param str recipient: the email address to send to
         :param str email_body: a string containing the entire email message
         :param str attachments_path: path to a folder containing image files to attach to the email, if desired
         """
+        if self.secret_name_set:
+            sender = self.email
 
-        sender = self.email
+            msg = MIMEMultipart()  # set up the email
+            msg['Subject'] = 'Your AWS Expenses - from {} - {}'.format(self.start_date, self.end_date)
+            msg['From'] = sender
+            msg['To'] = recipient
 
-        msg = MIMEMultipart()  # set up the email
-        msg['Subject'] = 'Your AWS Expenses - from {} - {}'.format(self.start_date, self.end_date)
-        msg['From'] = sender
-        msg['To'] = recipient
+            msg.attach(MIMEText(email_body))
 
-        msg.attach(MIMEText(email_body))
+            if attachments_path:
+                for png in os.listdir(attachments_path):
+                    with open(os.path.join(attachments_path, png), 'rb') as p:
+                        image = MIMEImage(p.read())
+                    msg.attach(image)
 
-        if attachments_path:
-            for png in os.listdir(attachments_path):
-                with open(os.path.join(attachments_path, png), 'rb') as p:
-                    image = MIMEImage(p.read())
-                msg.attach(image)
+            s = smtplib.SMTP('smtp.gmail.com', 587)
+            s.starttls()
+            s.login(sender, self.password)
 
-        s = smtplib.SMTP('smtp.gmail.com', 587)
-        s.starttls()
-        s.login(sender, self.password)
+            text = msg.as_string()
 
-        text = msg.as_string()
-
-        s.sendmail(sender, recipient, text)
-        s.quit()
+            s.sendmail(sender, recipient, text)
+            s.quit()
+        else:
+            raise RuntimeError('You must specify a value for secret_name in initialization to send an e-mail.')
 
     def send_management_report(self, recipients, accounts=None, clean=True):
         """
