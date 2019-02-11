@@ -90,11 +90,11 @@ class GraphGenerator:
         dic2_copy = copy.deepcopy(dic2)
         for name in dic1:
             if name in dic2_copy:
-                if name == "Total":
+                if name in ["Total", "Increase"]:
                     dic2_copy[name] += dic1[name]
                 else:
                     for service in dic1[name]:
-                        if service == "Total":
+                        if service in ["Total", "Increase"]:
                             dic2_copy[name][service] += dic1[name][service]
                         else:
                             if service in dic2[name]:
@@ -143,7 +143,7 @@ class GraphGenerator:
 
         counter = 0  # iteration counter to keep track of which color to use
         for name in data:
-            if name != 'Total':
+            if name not in ['Total', 'Increase']:
                 if first:
                     if name == first:
                         continue  # if the first person to graph was specified, don't graph their data again
