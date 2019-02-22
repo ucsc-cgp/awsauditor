@@ -11,7 +11,7 @@ def lambda_handler(event, context):
 # This example will run at 8:30 pm UTC every day
 
 
-# @app.schedule('cron(0, 16, *, *, ?, *)')
-# def lambda_handler(event):
+# @app.schedule('cron(45, 23, *, *, ?, *)')
+# def lambda_scheduler(event):
 #     awsAuditor.main()
 

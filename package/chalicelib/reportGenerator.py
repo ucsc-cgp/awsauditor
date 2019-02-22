@@ -8,7 +8,7 @@ import json
 import smtplib
 import os
 import pprint
-from graphGenerator import GraphGenerator
+from chalicelib.graphGenerator import GraphGenerator
 
 
 class ReportGenerator:
@@ -426,33 +426,35 @@ class ReportGenerator:
 
         return report
 
-    def create_account_graphics(self, response_by_account, recipient, acct):
+    def create_account_graphics(self, response_by_account, acct):
         # Make a graph for this account organized by owner and save it as a png
         plt_by_owner = GraphGenerator.graph_bar(response_by_account[acct]['Owner'],
                                                        "%s Costs This Month By Owner" % self.nums_to_aliases[acct],
                                                        self.start_date, self.end_date)
 
-        plt_by_owner[0].savefig("tmp/%s/%s_by_owner.png" % (recipient, acct), bbox_extra_artists=(plt_by_owner[1],),
+        plt_by_owner[0].savefig("/tmp/%s_by_owner.png" % acct, bbox_extra_artists=(plt_by_owner[1],),
                                 bbox_inches='tight', dpi=200)
         plt_by_owner[0].close()
 
-        # Make a graph for this account organized by service and save it as a png
-        plt_by_service = GraphGenerator.graph_bar(response_by_account[acct]['Service'],
-                                                         "%s Costs This Month By Service" % self.nums_to_aliases[acct]
-                                                         , self.start_date, self.end_date)
-
-        plt_by_service[0].savefig("tmp/%s/%s_by_service.png" % (recipient, acct),
-                                  bbox_extra_artists=(plt_by_service[1],),
-                                  bbox_inches='tight', dpi=200)
-        plt_by_service[0].close()
+        # This is commented out because it takes a long time to make both types of graphs. If you want to use both,
+        # just un-comment this section.
+        # # Make a graph for this account organized by service and save it as a png
+        # plt_by_service = GraphGenerator.graph_bar(response_by_account[acct]['Service'],
+        #                                                  "%s Costs This Month By Service" % self.nums_to_aliases[acct]
+        #                                                  , self.start_date, self.end_date)
+        #
+        # plt_by_service[0].savefig("/tmp/%s_by_service.png" % acct,
+        #                           bbox_extra_artists=(plt_by_service[1],),
+        #                           bbox_inches='tight', dpi=200)
+        # plt_by_service[0].close()
 
     def create_individual_graphics(self, response_by_account, user, acct):
         plt = GraphGenerator.graph_bar(response_by_account[acct][user], "%s's %s Costs This Month"
                                               % (user, self.nums_to_aliases[acct]), self.start_date, self.end_date)
-        plt[0].savefig("tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
+        plt[0].savefig("/tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
         plt[0].close()
 
-    def send_email(self, recipient, email_body, attachments_path=None):
+    def send_email(self, recipient, email_body, attachments=None):
         """
         Send the report to a recipient.
 
@@ -463,7 +465,7 @@ class ReportGenerator:
                               this function will cause it to break.
         :param str recipient: the email address to send to
         :param str email_body: a string containing the entire email message
-        :param str attachments_path: path to a folder containing image files to attach to the email, if desired
+        :param list(str) attachments: list of image files to attach to the email, if desired
         """
         if self.secret_name_set:
             sender = self.email
@@ -475,10 +477,10 @@ class ReportGenerator:
 
             msg.attach(MIMEText(email_body))
 
-            if attachments_path:
-                for png in os.listdir(attachments_path):
-                    with open(os.path.join(attachments_path, png), 'rb') as p:
-                        image = MIMEImage(p.read())
+            if attachments:
+                for png in attachments:
+                    with open(png, 'rb') as p:
+                        image = MIMEImage(p.read(), _subtype="png")
                     msg.attach(image)
 
             s = smtplib.SMTP('smtp.gmail.com', 587)
@@ -492,7 +494,7 @@ class ReportGenerator:
         else:
             raise RuntimeError('You must specify a value for secret_name in initialization to send an e-mail.')
 
-    def send_management_report(self, recipients, accounts=None, clean=True):
+    def send_management_report(self, recipients, accounts=None, clean=False):
         """
         Email a report, tailored to managers, to a list of recipients.
 
@@ -500,14 +502,15 @@ class ReportGenerator:
         :param list(str) accounts: The account aliases of interest.
         :param bool clean: If true, delete the image directory at the end.
         """
-        GraphGenerator.clean()
-        if not os.path.exists("tmp/"):  # create directory to store graphs in
-            os.mkdir("tmp/")
 
-        if not os.path.exists("tmp/%s" % '_'.join(recipients)):
-            os.mkdir("tmp/%s" % '_'.join(recipients))
+        if not os.path.exists("/tmp/"):  # create directory to store graphs in
+            os.mkdir("/tmp/")
+
+        already_made_graphs = os.listdir("/tmp/")  # get all the graphs that are already made so we don't duplicate them
+        print(already_made_graphs)
 
         response_by_account = dict()
+        pngs = list()
 
         if accounts:
             accounts = [self.aliases_to_nums[alias] for alias in accounts]
@@ -516,15 +519,24 @@ class ReportGenerator:
 
         # Determine expenditures across all accounts.
         for acct_num in accounts:
+            print("acct number %s" % acct_num)
             response_by_account[acct_num] = {}
             for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
                 response = self.api_call(account_nums=[acct_num], group_by=category)
                 processed = self.process_api_response_for_managers(response, self.end_date)
                 response_by_account[acct_num][category] = processed
 
+        if len(response_by_account) > 1:  # only include the total across all accounts if there is more than one account
+            response_by_account["Total"] = ReportGenerator.sum_dictionary(response_by_account)
+
         # Create graphics.
         for acct in response_by_account:  # Add in the total field for purposes of making the text report
-            self.create_account_graphics(response_by_account, '_'.join(recipients), acct)
+            if "%s_by_owner.png" % acct not in already_made_graphs:
+                print("making %s graphs" % acct)
+                self.create_account_graphics(response_by_account, acct)
+            pngs.append("/tmp/%s_by_owner.png" % acct)
+            #pngs.append("/tmp/%s_by_service.png" % acct)
+
             response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'],
                                                      response_by_account[acct]['Owner']['Total'])
 
@@ -532,12 +544,12 @@ class ReportGenerator:
 
         # Send emails.
         for recipient in recipients:
-            self.send_email(recipient, report, "tmp/%s" % '_'.join(recipients))
+            self.send_email(recipient, report, pngs)
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
 
-    def send_individual_report(self, user, recipients=None, accounts=None, clean=True):
+    def send_individual_report(self, user, recipients=None, accounts=None, clean=False):
         """
         Email a report detailing the expenditures of a given user.
 
@@ -547,13 +559,14 @@ class ReportGenerator:
                                    (all accounts under the organization).
         :param bool clean: If true, delete the image directory at the end.
         """
-        GraphGenerator.clean()
+
         if accounts:
             accounts = [self.aliases_to_nums[alias] for alias in accounts]
         else:
             accounts = self.account_nums
 
         recipients = recipients or [user]
+        pngs = list()
 
         # Determine expenditures for the user across all accounts.
         response_by_account = dict()
@@ -565,22 +578,24 @@ class ReportGenerator:
         if user == "":
             user = "Untagged"
 
-        response_by_account["Total"] = ReportGenerator.sum_dictionary(response_by_account)
+        if len(response_by_account) > 1:  # only include the total across all accounts if there is more than one account
+            response_by_account["Total"] = ReportGenerator.sum_dictionary(response_by_account)
 
-        if not os.path.exists("tmp/"):
-            os.mkdir("tmp/")
-        if not os.path.exists("tmp/%s" % user):  # create directory to store graphs in
-            os.mkdir("tmp/%s" % user)
+        if not os.path.exists("/tmp/"):
+            os.mkdir("/tmp/")
+        if not os.path.exists("/tmp/%s" % user):  # create directory to store graphs in
+            os.mkdir("/tmp/%s" % user)
 
         # Create graphics.
         for acct in response_by_account:  # one of these is "Total" not an account number
             if user in response_by_account[acct]:  # create graphical reports
                 self.create_individual_graphics(response_by_account, user, acct)
+                pngs.append("/tmp/%s/%s.png" % (user, acct))
 
         report = self.create_individual_report_body(user, response_by_account)
 
         for recipient in recipients:  # Send emails
-            self.send_email(recipient, report, "tmp/%s" % user)  # send the text and graphs together in an email
+            self.send_email(recipient, report, pngs)  # send the text and graphs together in an email
 
         if clean:
             GraphGenerator.clean()  # delete images once they're used
