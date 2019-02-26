@@ -519,7 +519,6 @@ class ReportGenerator:
 
         # Determine expenditures across all accounts.
         for acct_num in accounts:
-            print("acct number %s" % acct_num)
             response_by_account[acct_num] = {}
             for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
                 response = self.api_call(account_nums=[acct_num], group_by=category)
@@ -532,7 +531,6 @@ class ReportGenerator:
         # Create graphics.
         for acct in response_by_account:  # Add in the total field for purposes of making the text report
             if "%s_by_owner.png" % acct not in already_made_graphs:
-                print("making %s graphs" % acct)
                 self.create_account_graphics(response_by_account, acct)
             pngs.append("/tmp/%s_by_owner.png" % acct)
             #pngs.append("/tmp/%s_by_service.png" % acct)

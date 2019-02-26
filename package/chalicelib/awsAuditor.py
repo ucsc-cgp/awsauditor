@@ -36,7 +36,7 @@ def main():
     end = str(datetime.date.today())
 
     bucket_name = 'aws-auditor-config'
-    file_name = 'config.json'
+    file_name = 'justcricket.json'
 
     config = get_config(bucket_name, file_name)
 
@@ -48,11 +48,11 @@ def main():
 
     # Send account management reports
     for manager, accounts in manager_accounts.items():
-        r.send_management_report(["esoth@ucsc.edu"], accounts)
+        r.send_management_report(['awsauditor.recieve@gmail.com'], accounts)
 
     # Send individual reports
     for user in users:
-        r.send_individual_report(user, recipients=["esoth@ucsc.edu"])
+        r.send_individual_report(user, recipients=["awsauditor.recieve@gmail.com"])
 
 
 if __name__ == '__main__':
