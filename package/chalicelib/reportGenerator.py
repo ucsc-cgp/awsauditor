@@ -17,6 +17,8 @@ class ReportGenerator:
 
     Note that each Cost Explorer API request costs $0.01. There may be other expenses associated with API calls.
     See the following for more information: https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/ce-what-is.html
+    Currently, ReportGenerator.api_call() is the only function that makes this API call. However,
+    ReportGenerator.send_management_report() and ReportGenerator.send_individual_report() call ReportGenerator.api_call().
 
     See the following link for more information about the response and request syntax and options:
     https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_GetCostAndUsage.html
@@ -348,41 +350,44 @@ class ReportGenerator:
         """
         all_accts_total = 0.0
         all_accts_increase = 0.0
-        report = '\nReport for ' + ', '.join([self.nums_to_aliases[acct_num] for acct_num in response_by_account.keys()]) + '\n'
+        report = '\nReport for ' + ', '.join([self.nums_to_aliases[acct_num] for acct_num in response_by_account.keys()
+                                              if acct_num != 'Total']) + '\n'
         report += '\tExpenditures from {} - {}\n\n'.format(self.start_date, self.end_date)
 
         for acct_num, acct_data in response_by_account.items():
-            report += '\t\t{}\n'.format(self.nums_to_aliases[acct_num])
+            if acct_num != 'Total':
+                report += '\t\t{}\n'.format(self.nums_to_aliases[acct_num])
 
-            # If money was spent create a report otherwise indicate no activity.
-            if acct_data['Owner']['Total']:
+                # If money was spent create a report otherwise indicate no activity.
+                if acct_data['Owner']['Total']:
 
-                # total spent for each user
-                for user, expenditures in acct_data['Owner'].items():
-                    if user not in ['Total', 'Increase']:  # The total across all users is stored alongside them and should be ignored.
-                        total = expenditures['Total']
-                        increase = expenditures['Increase']
+                    # total spent for each user
+                    for user, expenditures in acct_data['Owner'].items():
+                        if user not in ['Total', 'Increase']:  # The total across all users is stored alongside them and should be ignored.
+                            total = expenditures['Total']
+                            increase = expenditures['Increase']
 
-                        all_accts_total += total
-                        all_accts_increase += increase
+                            all_accts_total += total
+                            all_accts_increase += increase
 
-                        if total >= 0.01:
-                            report += '\t\t\t{:40} ${:.2f}'.format(user, total)
-                        else:
-                            report += '\t\t    {:40}<$0.01'.format(user)
+                            if total >= 0.01:
+                                report += '\t\t\t{:40} ${:.2f}'.format(user, total)
+                            else:
+                                report += '\t\t    {:40}<$0.01'.format(user)
 
-                        if increase >= 0.01:
-                            report += '\t\tup ${:.2f}\n'.format(increase)
-                        else:
-                            report += '\t    up <$0.01\n'
+                            if increase >= 0.01:
+                                report += '\t\tup ${:.2f}\n'.format(increase)
+                            else:
+                                report += '\t    up <$0.01\n'
 
-                report += '\t\t\t' + '-' * 34 + '\n'
-                report += '\t\t\t{:40} ${:.2f}\t\tup ${:.2f}\n\n'.format('Total', acct_data['Owner']['Total'], acct_data['Owner']['Increase'])
+                    report += '\t\t\t' + '-' * 34 + '\n'
+                    report += '\t\t\t{:40} ${:.2f}\t\tup ${:.2f}\n\n'.format('Total', acct_data['Owner']['Total'], acct_data['Owner']['Increase'])
 
-            else:
-                report += '\t\t\tNo Activity from {} - {}\n\n'.format(self.start_date, self.end_date)
+                else:
+                    report += '\t\t\tNo Activity from {} - {}\n\n'.format(self.start_date, self.end_date)
 
-        if all_accts_total:
+        # Only print a total for all accounts line when there was more than 1 account ( plus the 'total' key)
+        if all_accts_total and len(response_by_account) > 2:
             report += '\t\t{:44} ${:.2f}\t\tup ${:.2f}\n'.format('Total for all accounts:', all_accts_total, all_accts_increase)
 
         return report
@@ -434,19 +439,19 @@ class ReportGenerator:
 
         plt_by_owner[0].savefig("/tmp/%s_by_owner.png" % acct, bbox_extra_artists=(plt_by_owner[1],),
                                 bbox_inches='tight', dpi=200)
-        plt_by_owner[0].close()
+        #plt_by_owner[0].close()
 
         # This is commented out because it takes a long time to make both types of graphs. If you want to use both,
         # just un-comment this section.
         # # Make a graph for this account organized by service and save it as a png
-        # plt_by_service = GraphGenerator.graph_bar(response_by_account[acct]['Service'],
-        #                                                  "%s Costs This Month By Service" % self.nums_to_aliases[acct]
-        #                                                  , self.start_date, self.end_date)
-        #
-        # plt_by_service[0].savefig("/tmp/%s_by_service.png" % acct,
-        #                           bbox_extra_artists=(plt_by_service[1],),
-        #                           bbox_inches='tight', dpi=200)
-        # plt_by_service[0].close()
+        plt_by_service = GraphGenerator.graph_bar(response_by_account[acct]['Service'],
+                                                         "%s Costs This Month By Service" % self.nums_to_aliases[acct]
+                                                         , self.start_date, self.end_date)
+
+        plt_by_service[0].savefig("/tmp/%s_by_service.png" % acct,
+                                  bbox_extra_artists=(plt_by_service[1],),
+                                  bbox_inches='tight', dpi=200)
+        plt_by_service[0].close()
 
     def create_individual_graphics(self, response_by_account, user, acct):
         plt = GraphGenerator.graph_bar(response_by_account[acct][user], "%s's %s Costs This Month"
@@ -533,7 +538,7 @@ class ReportGenerator:
             if "%s_by_owner.png" % acct not in already_made_graphs:
                 self.create_account_graphics(response_by_account, acct)
             pngs.append("/tmp/%s_by_owner.png" % acct)
-            #pngs.append("/tmp/%s_by_service.png" % acct)
+            pngs.append("/tmp/%s_by_service.png" % acct)
 
             response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'],
                                                      response_by_account[acct]['Owner']['Total'])
