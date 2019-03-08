@@ -1,8 +1,40 @@
 # awsauditor
-A tool for interrogating AWS billing data using the Cost Explorer API. It makes customized reports in text and graphic form, and emails them out to people. awsauditor is intended for use in an AWS Lambda so it can be automated to run daily. There is currently no command line tool to use awsauditor.
+A tool for interrogating AWS billing data using the Cost Explorer API. `awsauditor` is intended for use as an AWS Lambda so it can be automated to run daily.
 
-## Usage
-We are using Chalice to create lambdas for awsauditor so that its dependencies, matplotlib and numpy, can be included easily in a package compatible with AWS Lambda.
+Emails are sent out to managers and individual users that contain text and graphical reports breaking down MTD AWS expenditures.
+Emails sent to managers detail how much each user spent on the accounts they are responsible for.
+Emails sent to individuals summarize an individual's expenditures across accounts and services.
+
+
+## Configuration
+
+`awsauditor` gets all of its configuration information from a .json file that is stored in an AWS S3 bucket.
+Change line 38 and 39 to specify the name of bucket and .json, respectively.
+
+Lets break down an example config.json:
+
+    {
+        
+        "managers": {"manager1@email.com":["Account1", "Account3"], "manager2@email.com":["Account2", "Account4"]},
+        
+        "users": ["dev1@email.com", "dev2@email.com"],
+        
+        "secret_name": "emailsecret"
+    }
+
+`managers`: This dictionary specifies email address and the accounts they will receive reports for.
+
+`users`: This list specifies email addresses which will receive reports for their account activity across AWS accounts.
+
+`secret_name`: `awsauditor` sends out emails from an email address who's information is stored in the AWS Secret specified
+by this secret name. See https://aws.amazon.com/secrets-manager/getting-started/ for more information about AWS Secrets.
+
+The config.json needs to have this structure. 
+
+Note that all of the quotation marks are double quotes. This is important. 
+
+## Initial Deployment
+We are using Chalice to create lambdas for `awsauditor` so that its dependencies, matplotlib and numpy, can be included easily in a package compatible with AWS Lambda.
 
 Download the entire package directory.
 Install chalice, if not already done so:
@@ -12,24 +44,22 @@ Install chalice, if not already done so:
 Edit .chalice/config.json to include ARN for the IAM role for the lambda to be created.
 This role must include permissions to use AWS Organizations and AWS Cost Explorer operations.
 
-If you want awsauditor to run on a schedule, in app.py, replace the code under `@app.lambda_function` with that under `@app.schedule` (commented out by default). The given example will run at 10 AM every day. For more information about scheduling, see https://chalice.readthedocs.io/en/latest/topics/events.html.
-
 From within the package directory, create the lambda:
 
 `chalice deploy`
 
-## Configuration
-To configure awsauditor to send emails, edit chalicelib/reportGenerator.py to include your email and password.
-In the function `send_email`, edit to include your email address:
 
-`sender = "you@email.com"`
+## Automation
+You can trigger the lambda with an AWS CloudWatch Event. See https://aws.amazon.com/cloudwatch/ for more info about CloudWatch Events.
 
-and your password:
+Note that after redeploying the lambda, you must readd this event to the lambda again via the lambda management console.
+There is potentially another way to automatically configure this, we just haven't gotten the chance to set it up yet:
+see https://chalice.readthedocs.io/en/latest/topics/events.html.
 
-`s.login(sender, "y0urp@ssword")`
 
-To set who receives emails, edit chalicelib/awsAuditor.py, which contains a dictionary called `managers` and a list called `individuals`.
-The dictionary maps email addresses to lists of account names. People who have emails in this dictionary will get a report for each account mapped to them. The list contains email addresses for which to send individual reports. People who have emails in this list will get a report showing only their expenses.
+## Maintainiance
+After making any changes to the code in here, ie: changing bucket or config file names, the lambda must be redeployed
 
-To add or remove a person from the email list, just edit the dictionary and list accordingly. No changes are required to include a new person in the management reports. They will automatically show up in the API response.
+From `/path/to/awsauditor/package` run:
 
+`chalice deploy`
