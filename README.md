@@ -11,7 +11,7 @@ Emails sent to individuals summarize an individual's expenditures across account
 `awsauditor` gets all of its configuration information from a .json file that is stored in an AWS S3 bucket.
 Change line 38 and 39 to specify the name of bucket and .json, respectively.
 
-Lets break down an example config.json:
+Let's break down an example config.json:
 
     {
         
@@ -52,12 +52,12 @@ From within the package directory, create the lambda:
 ## Automation
 You can trigger the lambda with an AWS CloudWatch Event. See https://aws.amazon.com/cloudwatch/ for more info about CloudWatch Events.
 
-Note that after redeploying the lambda, you must readd this event to the lambda again via the lambda management console.
+Note that after redeploying the lambda, you must re-add this event to the lambda again via the lambda management console.
 There is potentially another way to automatically configure this, we just haven't gotten the chance to set it up yet:
 see https://chalice.readthedocs.io/en/latest/topics/events.html.
 
 
-## Maintainiance
+## Maintenance
 After making any changes to the code in here, ie: changing bucket or config file names, the lambda must be redeployed
 
 From `/path/to/awsauditor/package` run:
