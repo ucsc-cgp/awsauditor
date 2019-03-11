@@ -167,5 +167,6 @@ class GraphGenerator:
     def clean():
         """Erase everything in the images directory"""
 
-        if os.path.exists("tmp/"):
-            shutil.rmtree("tmp/")
+        if os.path.exists("/tmp/"):
+            for folder in os.listdir("/tmp/"):
+                shutil.rmtree("/tmp/%s" % folder)

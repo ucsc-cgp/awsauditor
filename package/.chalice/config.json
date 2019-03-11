@@ -5,7 +5,9 @@
   "iam_role_arn": "arn:aws:iam::862902209576:role/lambda_list_accounts",
   "stages": {
     "dev": {
-      "api_gateway_stage": "api"
+      "api_gateway_stage": "api",
+      "lambda_memory_size": 1088,
+      "lambda_timeout": 600
     }
   }
 }
