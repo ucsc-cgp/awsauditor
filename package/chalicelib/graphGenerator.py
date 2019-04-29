@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import os
-import pprint
 import shutil
 
 
@@ -122,7 +121,7 @@ class GraphGenerator:
         if dark:
             plt.style.use(os.path.abspath(".matplotlib/elip12.mplstyle"))  # style definition
 
-        plt.figure(figsize=(5, 5))
+        plt.figure(figsize=(8, 5))
         axes = plt.axes()
         axes.xaxis.set_major_locator(ticker.MultipleLocator(1))  # set the tick marks to integer values
 
