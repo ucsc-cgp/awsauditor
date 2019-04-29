@@ -5,9 +5,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 import json
-import smtplib
 import os
-import pprint
+import re
+import smtplib
+
 from chalicelib.graphGenerator import GraphGenerator
 
 
@@ -333,10 +334,11 @@ class ReportGenerator:
         :param acct_dic: input dictionary
         :return: dictionary
         """
-        key, value = acct_dic.popitem()
-        total = value
+        key, value = next(iter(acct_dic.items()))
+        total = value  # Get a dictionary for an arbitrary first account
         for a in acct_dic:
-            total = GraphGenerator.merge_dictionaries(total, acct_dic[a])
+            if a != key:  # Add in the values from the dictionaries for each other account
+                total = GraphGenerator.merge_dictionaries(total, acct_dic[a])
         return total
 
     def create_management_report_body(self, response_by_account):
@@ -400,10 +402,15 @@ class ReportGenerator:
         :param dict response_by_account: A dictionary containing expenditure data organized by account.
         :return str report: A string containing the report.
         """
-        spent_money = response_by_account["Total"]["Total"]
+
         report = 'Report for {}\n\n'.format(user)
 
-        if spent_money:
+        if len(response_by_account) > 0:  # This user had expenses in at least one account
+
+            if 'Total' in response_by_account:  # There are multiple accounts for this user
+                spent_money = response_by_account["Total"]["Total"]
+            else:  # There is only one account in the dictionary, so get its total
+                spent_money = next(iter(response_by_account.values()))['Total']
 
             # For each account on which money was spent, create a breakdown of expenditures.
             for acct_num, data in response_by_account.items():
@@ -422,7 +429,8 @@ class ReportGenerator:
                     report += '\t\t\t{:40} ${:.2f}\t\tup ${:.2f}\n\n'.format('Total', data['Total'], data['Increase'])
 
             # TODO fix this string formatting. Using spaces for alignment is janky.
-            report += '\t\tExpenditures from {} to {}:  ${:.2f}\t\tup ${:.2f}\n'.format(self.start_date, self.end_date, spent_money, data['Increase'])
+            report += '\t\tExpenditures from {} to {}:  ${:.2f}\t\tup ${:.2f}\n'.format(self.start_date, self.end_date,
+                                                                spent_money, data['Increase'])
 
         else:
             report += '\n\tNo expenditures from {} to {}\n'.format(self.start_date, self.end_date)
@@ -432,31 +440,36 @@ class ReportGenerator:
         return report
 
     def create_account_graphics(self, response_by_account, acct):
+
+        # Name the file by the account name replacing spaces with dashes
+        file_name = self.nums_to_aliases[acct].replace(' ', '-')
+
         # Make a graph for this account organized by owner and save it as a png
         plt_by_owner = GraphGenerator.graph_bar(response_by_account[acct]['Owner'],
                                                        "%s Costs This Month By Owner" % self.nums_to_aliases[acct],
                                                        self.start_date, self.end_date)
 
-        plt_by_owner[0].savefig("/tmp/%s_by_owner.png" % acct, bbox_extra_artists=(plt_by_owner[1],),
+        plt_by_owner[0].savefig("/tmp/%s_by_owner.png" % file_name, bbox_extra_artists=(plt_by_owner[1],),
                                 bbox_inches='tight', dpi=200)
-        #plt_by_owner[0].close()
+        plt_by_owner[0].close()
 
         # This is commented out because it takes a long time to make both types of graphs. If you want to use both,
         # just un-comment this section.
-        # # Make a graph for this account organized by service and save it as a png
+        # Make a graph for this account organized by service and save it as a png
         plt_by_service = GraphGenerator.graph_bar(response_by_account[acct]['Service'],
                                                          "%s Costs This Month By Service" % self.nums_to_aliases[acct]
                                                          , self.start_date, self.end_date)
 
-        plt_by_service[0].savefig("/tmp/%s_by_service.png" % acct,
-                                  bbox_extra_artists=(plt_by_service[1],),
+        plt_by_service[0].savefig("/tmp/%s_by_service.png" % file_name, bbox_extra_artists=(plt_by_service[1],),
                                   bbox_inches='tight', dpi=200)
         plt_by_service[0].close()
 
     def create_individual_graphics(self, response_by_account, user, acct):
         plt = GraphGenerator.graph_bar(response_by_account[acct][user], "%s's %s Costs This Month"
                                               % (user, self.nums_to_aliases[acct]), self.start_date, self.end_date)
-        plt[0].savefig("/tmp/%s/%s.png" % (user, acct), bbox_extra_artists=(plt[1],), bbox_inches='tight', dpi=200)
+
+        plt[0].savefig("/tmp/%s_%s.png" % (user.split('@')[0], self.nums_to_aliases[acct]), bbox_extra_artists=(plt[1],),
+                       bbox_inches='tight', dpi=200)
         plt[0].close()
 
     def send_email(self, recipient, email_body, attachments=None):
@@ -484,8 +497,13 @@ class ReportGenerator:
 
             if attachments:
                 for png in attachments:
+
+                    # Format the file name into a nice title for the attachment
+                    display_name = re.match(r'/tmp/(.*).png', png).group(1).replace('_', ' ')
+
                     with open(png, 'rb') as p:
                         image = MIMEImage(p.read(), _subtype="png")
+                        image.add_header('Content-Disposition', 'attachment', filename=display_name)
                     msg.attach(image)
 
             s = smtplib.SMTP('smtp.gmail.com', 587)
@@ -512,7 +530,6 @@ class ReportGenerator:
             os.mkdir("/tmp/")
 
         already_made_graphs = os.listdir("/tmp/")  # get all the graphs that are already made so we don't duplicate them
-        print(already_made_graphs)
 
         response_by_account = dict()
         pngs = list()
@@ -524,21 +541,26 @@ class ReportGenerator:
 
         # Determine expenditures across all accounts.
         for acct_num in accounts:
-            response_by_account[acct_num] = {}
-            for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
-                response = self.api_call(account_nums=[acct_num], group_by=category)
-                processed = self.process_api_response_for_managers(response, self.end_date)
-                response_by_account[acct_num][category] = processed
+            if acct_num != 'Total':
+                response_by_account[acct_num] = {}
+                for category in ['Owner', 'Service']:  # Create a separate report grouped by each of these categories
+                    response = self.api_call(account_nums=[acct_num], group_by=category)
+                    processed = self.process_api_response_for_managers(response, self.end_date)
+                    response_by_account[acct_num][category] = processed
 
         if len(response_by_account) > 1:  # only include the total across all accounts if there is more than one account
             response_by_account["Total"] = ReportGenerator.sum_dictionary(response_by_account)
 
         # Create graphics.
         for acct in response_by_account:  # Add in the total field for purposes of making the text report
-            if "%s_by_owner.png" % acct not in already_made_graphs:
+
+            # Name the file by the account name replacing spaces with dashes
+            file_name = self.nums_to_aliases[acct].replace(' ', '-')
+
+            if "%s_by_owner.png" % file_name not in already_made_graphs:
                 self.create_account_graphics(response_by_account, acct)
-            pngs.append("/tmp/%s_by_owner.png" % acct)
-            pngs.append("/tmp/%s_by_service.png" % acct)
+            pngs.append("/tmp/%s_by_owner.png" % file_name)
+            pngs.append("/tmp/%s_by_service.png" % file_name)
 
             response_by_account[acct]['Total'] = max(response_by_account[acct]['Service']['Total'],
                                                      response_by_account[acct]['Owner']['Total'])
@@ -574,9 +596,11 @@ class ReportGenerator:
         # Determine expenditures for the user across all accounts.
         response_by_account = dict()
         for acct_num in accounts:
-            response = self.api_call([user], [acct_num])
-            processed = self.process_api_response_for_individual(response, self.end_date)
-            response_by_account[acct_num] = processed
+            if acct_num != 'Total':
+                response = self.api_call([user], [acct_num])
+                processed = self.process_api_response_for_individual(response, self.end_date)
+                if processed['Total'] > 0:
+                    response_by_account[acct_num] = processed
 
         if user == "":
             user = "Untagged"
@@ -593,7 +617,7 @@ class ReportGenerator:
         for acct in response_by_account:  # one of these is "Total" not an account number
             if user in response_by_account[acct]:  # create graphical reports
                 self.create_individual_graphics(response_by_account, user, acct)
-                pngs.append("/tmp/%s/%s.png" % (user, acct))
+                pngs.append("/tmp/%s_%s.png" % (user.split('@')[0], self.nums_to_aliases[acct]))
 
         report = self.create_individual_report_body(user, response_by_account)
 
