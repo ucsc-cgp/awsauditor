@@ -105,7 +105,7 @@ class GraphGenerator:
         return dic2_copy
 
     @staticmethod
-    def graph_bar(data, title, start_date, end_date, total=False, first=None, dark=False):
+    def graph_bar(data, title, start_date, end_date, total=False, first=None, dark=True):
         """
         Display a matplotlib bar graph of data.
 
@@ -118,8 +118,9 @@ class GraphGenerator:
         :param bool dark: if true, plot on a dark background
         :return: matplotlib plot
         """
+
         if dark:
-            plt.style.use(os.path.abspath(".matplotlib/elip12.mplstyle"))  # style definition
+            plt.style.use(os.path.abspath("chalicelib/.matplotlib/elip12.mplstyle"))  # style definition
 
         plt.figure(figsize=(8, 5))
         axes = plt.axes()

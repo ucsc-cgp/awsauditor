@@ -38,7 +38,9 @@ def main():
     bucket_name = 'bucketwith-config'
     file_name = 'config.json'
 
-    config = get_config(bucket_name, file_name)
+    config = {"managers": {"esoth@ucsc.edu": ["Toil Dev", "platform-dev", "ucsc-cgp-production"]},
+              "users": [],
+              "secret_name": "awsauditor_email"}
 
     manager_accounts = config['managers']
     users = config['users']

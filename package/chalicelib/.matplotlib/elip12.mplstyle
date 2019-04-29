@@ -10,6 +10,7 @@ lines.linewidth: 1
 axes.facecolor: 252525
 axes.grid: true
 axes.prop_cycle: cycler('color', {'60d515', 'd22b10', '1fa8e4', 'e0cc05', 'eb860d', 'b113ef'})
+axes.labelcolor: 848484
 grid.linestyle: --
 grid.linewidth: .5
 grid.color: 848484
