@@ -8,8 +8,17 @@ Emails sent to individuals summarize an individual's expenditures across account
 
 ## Configuration
 
-`awsauditor` gets all of its configuration information from a .json file that is stored in an AWS S3 bucket.
-Change line 38 and 39 to specify the name of bucket and .json, respectively.
+`awsauditor` gets all of its configuration information from a .json file that is stored in an AWS S3 bucket. Change line 38 and 39 of awsAuditor.py to specify the name of bucket and .json, respectively. To make changes to the mailing list: 
+
+* Log in to the relevant AWS account. Go to S3 and to the aws-auditor-config bucket (or whatever yours is called). Download config.json. This is the mailing list.
+
+* To add a new account report, find the person's email in the "managers" dictionary keys, or make an entry for them if it doesn't already exist. The corresponding value is a list of accounts that they will get reports for. Add whichever accounts to the list. These have to exactly match the name that's used for them in AWS so take note of capitals, dashes, etc
+
+* To add a new individual report for a new person, add the person's email to the "users" list.
+
+* Save and upload the file back to the bucket, replacing the old config.json
+
+You shouldn't have to restart it or do anything else. Changes should show up the next day.
 
 Let's break down an example config.json:
 
